@@ -172,7 +172,7 @@ function SafeZoneButton() {
 			onClick={() =>
 				toggleOverlayVisibility({ overlayId: SAFE_ZONE_OVERLAY_ID })
 			}
-			title={isVisible ? "Hide safe zone" : "Show safe zone (Instagram)"}
+			title={isVisible ? "Hide safe zone" : "Show safe zone (Shorts)"}
 		>
 			<HugeiconsIcon icon={SquareIcon} />
 		</Button>
