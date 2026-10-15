@@ -7,7 +7,15 @@ import { cn } from "@/utils/ui";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { invokeAction } from "@/actions";
-import { PlayPauseButton, TimecodeDisplay } from "./toolbar";
+import {
+	PlayPauseButton,
+	RestartButton,
+	SafeZoneButton,
+	TimecodeDisplay,
+} from "./toolbar";
+import { usePreviewStore } from "@/preview/preview-store";
+import { isPreviewOverlayVisible } from "@/preview/overlays";
+import { SAFE_ZONE_TEMPLATES, SafeZoneOverlay } from "@/preview/safe-zone-overlay";
 
 const POPOUT_DEFAULT_WIDTH = 640;
 const POPOUT_TOOLBAR_HEIGHT = 56;
@@ -141,6 +149,13 @@ function PopoutPlayer({
 	width: number;
 	height: number;
 }) {
+	const isSafeZoneVisible = usePreviewStore((state) =>
+		isPreviewOverlayVisible({
+			overlay: SAFE_ZONE_TEMPLATES.reels.overlay,
+			overlays: state.overlays,
+		}),
+	);
+
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
@@ -157,20 +172,42 @@ function PopoutPlayer({
 	return (
 		<div className="bg-background flex h-screen w-screen flex-col">
 			<div className="flex min-h-0 flex-1 items-center justify-center bg-black">
-				<canvas
-					ref={canvasRef}
-					width={width}
-					height={height}
-					className="size-full object-contain"
-				/>
+				{/* Sized to the video's aspect ratio so the safe zone lines up with it. */}
+				<div
+					className="relative max-h-full max-w-full"
+					style={{
+						aspectRatio: `${width} / ${height}`,
+						height: "100%",
+					}}
+				>
+					<canvas
+						ref={canvasRef}
+						width={width}
+						height={height}
+						className="size-full"
+					/>
+					{isSafeZoneVisible && (
+						<SafeZoneOverlay
+							template={SAFE_ZONE_TEMPLATES.reels}
+							width={width}
+							height={height}
+							fillContainer
+						/>
+					)}
+				</div>
 			</div>
 			<div
 				className="grid grid-cols-[1fr_auto_1fr] items-center px-4"
 				style={{ height: POPOUT_TOOLBAR_HEIGHT }}
 			>
 				<TimecodeDisplay />
-				<PlayPauseButton />
-				<div />
+				<div className="flex items-center gap-1">
+					<RestartButton />
+					<PlayPauseButton />
+				</div>
+				<div className="justify-self-end">
+					<SafeZoneButton />
+				</div>
 			</div>
 			<PopoutTimeline />
 		</div>

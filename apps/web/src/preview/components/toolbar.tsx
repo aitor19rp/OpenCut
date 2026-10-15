@@ -11,6 +11,7 @@ import {
 	PauseIcon,
 	PictureInPictureExitIcon,
 	PictureInPictureOnIcon,
+	PreviousIcon,
 	SquareIcon,
 	PlayIcon,
 } from "@hugeicons/core-free-icons";
@@ -29,7 +30,7 @@ import { GridPopover } from "./guide-popover";
 import { usePreviewStore } from "@/preview/preview-store";
 import { SAFE_ZONE_TEMPLATES } from "@/preview/safe-zone-overlay";
 import { isPreviewOverlayVisible } from "@/preview/overlays";
-import type { MediaTime } from "@/wasm";
+import { type MediaTime, ZERO_MEDIA_TIME } from "@/wasm";
 
 export function PreviewToolbar({
 	onToggleFullscreen,
@@ -43,7 +44,10 @@ export function PreviewToolbar({
 	return (
 		<div className="grid grid-cols-[1fr_auto_1fr] items-center pb-3 pt-5 px-5">
 			<TimecodeDisplay />
-			<PlayPauseButton />
+			<div className="flex items-center gap-1">
+				<RestartButton />
+				<PlayPauseButton />
+			</div>
 			<div className="justify-self-end flex items-center gap-2.5">
 				<ZoomSelect />
 				<Separator orientation="vertical" className="h-4" />
@@ -152,7 +156,7 @@ function ZoomSelect() {
 	);
 }
 
-function SafeZoneButton() {
+export function SafeZoneButton() {
 	const overlay = SAFE_ZONE_TEMPLATES.reels.overlay;
 	const isVisible = usePreviewStore((state) =>
 		isPreviewOverlayVisible({ overlay, overlays: state.overlays }),
@@ -170,6 +174,20 @@ function SafeZoneButton() {
 			title={isVisible ? "Hide safe zone" : "Show safe zone (Instagram Reels)"}
 		>
 			<HugeiconsIcon icon={SquareIcon} />
+		</Button>
+	);
+}
+
+export function RestartButton() {
+	const editor = useEditor();
+	return (
+		<Button
+			variant="text"
+			size="icon"
+			title="Back to start"
+			onClick={() => editor.playback.seek({ time: ZERO_MEDIA_TIME })}
+		>
+			<HugeiconsIcon icon={PreviousIcon} />
 		</Button>
 	);
 }

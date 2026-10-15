@@ -33,6 +33,7 @@ import {
 } from "@/timeline";
 import type { ElementRef } from "@/timeline/types";
 import type { FrameRate } from "opencut-wasm";
+import { getFollowingTextUpdates } from "@/timeline/magnetic-main-track";
 
 // --- Session ---
 
@@ -229,6 +230,45 @@ function packMainTrackUpdates({
 		cursor = addMediaTime({ a: cursor, b: duration });
 	}
 	return [...otherUpdates, ...packed];
+}
+
+/** Adds updates so texts aligned with resized main-track clips follow them. */
+function withFollowingTexts({
+	tracks,
+	updates,
+}: {
+	tracks: SceneTracks;
+	updates: GroupResizeUpdate[];
+}): GroupResizeUpdate[] {
+	const mainUpdates = new Map(
+		updates
+			.filter((update) => update.trackId === tracks.main.id)
+			.map((update) => [update.elementId, update.patch]),
+	);
+	const mainAfter = tracks.main.elements.map((element) => {
+		const patch = mainUpdates.get(element.id);
+		return patch
+			? { ...element, startTime: patch.startTime, duration: patch.duration }
+			: element;
+	});
+	const resizedIds = new Set(updates.map((update) => update.elementId));
+	const textUpdates = getFollowingTextUpdates({
+		tracks,
+		mainBefore: tracks.main.elements,
+		mainAfter,
+	})
+		.filter(({ element }) => !resizedIds.has(element.id))
+		.map(({ trackId, element, startTime, duration }) => ({
+			trackId,
+			elementId: element.id,
+			patch: {
+				trimStart: element.trimStart,
+				trimEnd: element.trimEnd,
+				startTime,
+				duration,
+			},
+		}));
+	return [...updates, ...textUpdates];
 }
 
 function hasResizeChanges({
@@ -444,9 +484,12 @@ export class ResizeController {
 		const result = this.config.isMagneticMainTrack?.()
 			? {
 					...computed,
-					updates: packMainTrackUpdates({
-						mainTrack: this.config.getSceneTracks().main,
-						updates: computed.updates,
+					updates: withFollowingTexts({
+						tracks: this.config.getSceneTracks(),
+						updates: packMainTrackUpdates({
+							mainTrack: this.config.getSceneTracks().main,
+							updates: computed.updates,
+						}),
 					}),
 				}
 			: computed;

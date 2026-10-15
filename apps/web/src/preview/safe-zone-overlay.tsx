@@ -44,14 +44,17 @@ export const SAFE_ZONE_TEMPLATE_IDS = Object.keys(
 const UNSAFE_FILL = "rgba(10, 130, 220, 0.45)";
 const OUTLINE = "rgba(255, 255, 255, 0.9)";
 
-function SafeZoneOverlay({
+export function SafeZoneOverlay({
 	template,
 	width,
 	height,
+	fillContainer = false,
 }: {
 	template: SafeZoneTemplate;
 	width: number;
 	height: number;
+	/** Stretch to the parent's size instead of using width/height in pixels. */
+	fillContainer?: boolean;
 }) {
 	const { frame } = template;
 	const points = template.safeOutline.map((point) => ({
@@ -62,9 +65,10 @@ function SafeZoneOverlay({
 
 	return (
 		<svg
-			width={width}
-			height={height}
+			width={fillContainer ? "100%" : width}
+			height={fillContainer ? "100%" : height}
 			viewBox={`0 0 ${width} ${height}`}
+			preserveAspectRatio="none"
 			className="pointer-events-none absolute inset-0"
 			aria-hidden="true"
 		>

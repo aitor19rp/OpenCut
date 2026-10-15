@@ -40,7 +40,7 @@ const defaultTextElement: Omit<TextElement, "id"> = {
 	type: "text",
 	name: "Text",
 	content: "Default text",
-	fontSize: 30,
+	fontSize: 15,
 	fontFamily: DEFAULT_TEXT_FONT_FAMILY,
 	color: "#ffffff",
 	background: { ...defaultTextBackground },
@@ -57,6 +57,9 @@ const defaultTextElement: Omit<TextElement, "id"> = {
 	trimEnd: ZERO_MEDIA_TIME,
 	transform: {
 		...defaultTransform,
+		// New texts start at 30% width and height.
+		scaleX: 0.3,
+		scaleY: 0.3,
 		position: { ...defaultTransform.position },
 	},
 	opacity: defaultOpacity,
