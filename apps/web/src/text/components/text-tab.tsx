@@ -6,6 +6,7 @@ import type { TextElement } from "@/timeline";
 import { NumberField } from "@/components/ui/number-field";
 import { useRef } from "react";
 import { EmojiPickerButton } from "./emoji-picker";
+import { TranslateButton } from "./translate-button";
 import {
 	Section,
 	SectionContent,
@@ -115,7 +116,23 @@ function ContentSection({
 		<Section collapsible sectionKey={`${element.id}:content`}>
 			<SectionHeader
 				trailing={
-					<EmojiPickerButton onOpen={rememberCaret} onSelect={insertEmoji} />
+					<>
+						<TranslateButton
+							text={element.content}
+							onTranslated={({ text }) =>
+								editor.timeline.updateElements({
+									updates: [
+										{
+											trackId,
+											elementId: element.id,
+											patch: { content: text },
+										},
+									],
+								})
+							}
+						/>
+						<EmojiPickerButton onOpen={rememberCaret} onSelect={insertEmoji} />
+					</>
 				}
 			>
 				<SectionTitle>Content</SectionTitle>
