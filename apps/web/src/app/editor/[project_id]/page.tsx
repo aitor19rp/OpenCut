@@ -32,7 +32,8 @@ import { usePreviewStore } from "@/preview/preview-store";
 import { getGuidePreviewOverlaySource } from "@/guides";
 import {
 	getSafeZonePreviewOverlaySource,
-	safeZonePreviewOverlay,
+	SAFE_ZONE_TEMPLATE_IDS,
+	SAFE_ZONE_TEMPLATES,
 } from "@/preview/safe-zone-overlay";
 import {
 	bookmarkNotesPreviewOverlay,
@@ -99,10 +100,12 @@ function EditorLayout() {
 		overlays,
 	});
 
-	const showSafeZone = isPreviewOverlayVisible({
-		overlay: safeZonePreviewOverlay,
-		overlays,
-	});
+	const visibleSafeZoneKey = SAFE_ZONE_TEMPLATE_IDS.filter((templateId) =>
+		isPreviewOverlayVisible({
+			overlay: SAFE_ZONE_TEMPLATES[templateId].overlay,
+			overlays,
+		}),
+	).join(",");
 
 	const overlaySource = useMemo(
 		() =>
@@ -111,7 +114,11 @@ function EditorLayout() {
 					getGuidePreviewOverlaySource({
 						guideId: activeGuide,
 					}),
-					getSafeZonePreviewOverlaySource({ isVisible: showSafeZone }),
+					getSafeZonePreviewOverlaySource({
+						visibleTemplateIds: visibleSafeZoneKey
+							? (visibleSafeZoneKey.split(",") as typeof SAFE_ZONE_TEMPLATE_IDS)
+							: [],
+					}),
 					activeScene
 						? getBookmarkPreviewOverlaySource({
 								bookmarks: activeScene.bookmarks,
@@ -124,7 +131,7 @@ function EditorLayout() {
 							},
 				],
 			}),
-		[activeGuide, activeScene, currentTime, showBookmarkNotes, showSafeZone],
+		[activeGuide, activeScene, currentTime, showBookmarkNotes, visibleSafeZoneKey],
 	);
 
 	const overlayControls = useMemo(

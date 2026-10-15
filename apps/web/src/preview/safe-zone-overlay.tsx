@@ -3,50 +3,84 @@ import type {
 	PreviewOverlaySourceResult,
 } from "@/preview/overlays";
 
-export const SAFE_ZONE_OVERLAY_ID = "shorts-safe-zone";
-
-export const safeZonePreviewOverlay: PreviewOverlayDefinition = {
-	id: SAFE_ZONE_OVERLAY_ID,
-	label: "Safe zone (Shorts)",
-	defaultVisible: false,
-};
-
 /**
- * Regions measured in pixels on a YouTube Shorts safe-area template, relative
- * to the video frame drawn on it (the dashed outline), so they scale to any
- * canvas size.
+ * A safe-zone template in its own pixel space. `frame` is the video area in
+ * that space; the safe outline is a polygon (in order) inside it. Everything
+ * is scaled to the canvas, so any aspect ratio works.
  */
-const TEMPLATE = { left: 33, top: 44, width: 251, height: 490 };
-const SAFE_AREA = { left: 38, top: 83, right: 279, bottom: 475 };
-/** Like / dislike / comment / share column, which covers the safe area's lower right. */
-const INTERACTION_BUTTONS = { left: 242, top: 224, right: 279, bottom: 475 };
+interface SafeZoneTemplate {
+	overlay: PreviewOverlayDefinition;
+	frame: { left: number; top: number; width: number; height: number };
+	safeOutline: Array<{ x: number; y: number }>;
+}
+
+export const SAFE_ZONE_TEMPLATES = {
+	/**
+	 * Measured on a YouTube Shorts template image, relative to the video frame
+	 * drawn on it. The lower right is cut out for the like/comment/share column.
+	 */
+	shorts: {
+		overlay: {
+			id: "shorts-safe-zone",
+			label: "Safe zone (YouTube Shorts)",
+			defaultVisible: false,
+		},
+		frame: { left: 33, top: 44, width: 251, height: 490 },
+		safeOutline: [
+			{ x: 38, y: 83 },
+			{ x: 279, y: 83 },
+			{ x: 279, y: 224 },
+			{ x: 242, y: 224 },
+			{ x: 242, y: 475 },
+			{ x: 38, y: 475 },
+		],
+	},
+	/**
+	 * Instagram boosted Reels spec on 1080×1920: about 1010×1280, 220 px from
+	 * the top and 420 px from the bottom (35 px side margins).
+	 */
+	reels: {
+		overlay: {
+			id: "reels-safe-zone",
+			label: "Safe zone (Instagram Reels)",
+			defaultVisible: false,
+		},
+		frame: { left: 0, top: 0, width: 1080, height: 1920 },
+		safeOutline: [
+			{ x: 35, y: 220 },
+			{ x: 1045, y: 220 },
+			{ x: 1045, y: 1500 },
+			{ x: 35, y: 1500 },
+		],
+	},
+} satisfies Record<string, SafeZoneTemplate>;
+
+export type SafeZoneTemplateId = keyof typeof SAFE_ZONE_TEMPLATES;
+
+export const SAFE_ZONE_TEMPLATE_IDS = Object.keys(
+	SAFE_ZONE_TEMPLATES,
+) as SafeZoneTemplateId[];
 
 const UNSAFE_FILL = "rgba(10, 130, 220, 0.45)";
 const OUTLINE = "rgba(255, 255, 255, 0.9)";
 
 function SafeZoneOverlay({
+	template,
 	width,
 	height,
 }: {
+	template: SafeZoneTemplate;
 	width: number;
 	height: number;
 }) {
-	const scaleX = width / TEMPLATE.width;
-	const scaleY = height / TEMPLATE.height;
-	const toX = (templateX: number) => (templateX - TEMPLATE.left) * scaleX;
-	const toY = (templateY: number) => (templateY - TEMPLATE.top) * scaleY;
-	const safe = {
-		left: toX(SAFE_AREA.left),
-		top: toY(SAFE_AREA.top),
-		right: toX(SAFE_AREA.right),
-		bottom: toY(SAFE_AREA.bottom),
-	};
-	const buttons = {
-		left: toX(INTERACTION_BUTTONS.left),
-		top: toY(INTERACTION_BUTTONS.top),
-	};
-	// Safe area outline with the buttons notch cut out of its lower right.
-	const safeOutline = `M${safe.left} ${safe.top}H${safe.right}V${buttons.top}H${buttons.left}V${safe.bottom}H${safe.left}Z`;
+	const { frame } = template;
+	const points = template.safeOutline.map((point) => ({
+		x: ((point.x - frame.left) / frame.width) * width,
+		y: ((point.y - frame.top) / frame.height) * height,
+	}));
+	const outline = `M${points.map((point) => `${point.x} ${point.y}`).join("L")}Z`;
+	const xs = points.map((point) => point.x);
+	const ys = points.map((point) => point.y);
 	const fontSize = Math.max(9, Math.min(14, width / 28));
 
 	return (
@@ -61,18 +95,18 @@ function SafeZoneOverlay({
 			<path
 				fillRule="evenodd"
 				fill={UNSAFE_FILL}
-				d={`M0 0H${width}V${height}H0Z ${safeOutline}`}
+				d={`M0 0H${width}V${height}H0Z ${outline}`}
 			/>
 			<path
-				d={safeOutline}
+				d={outline}
 				fill="none"
 				stroke={OUTLINE}
 				strokeWidth={1}
 				strokeDasharray="6 4"
 			/>
 			<text
-				x={(safe.left + buttons.left) / 2}
-				y={(safe.top + safe.bottom) / 2}
+				x={(Math.min(...xs) + Math.max(...xs)) / 2}
+				y={(Math.min(...ys) + Math.max(...ys)) / 2}
 				textAnchor="middle"
 				fill={OUTLINE}
 				fontSize={fontSize}
@@ -85,24 +119,35 @@ function SafeZoneOverlay({
 }
 
 export function getSafeZonePreviewOverlaySource({
-	isVisible,
+	visibleTemplateIds,
 }: {
-	isVisible: boolean;
+	visibleTemplateIds: SafeZoneTemplateId[];
 }): PreviewOverlaySourceResult {
 	return {
-		definitions: [safeZonePreviewOverlay],
-		instances: isVisible
-			? [
-					{
-						id: SAFE_ZONE_OVERLAY_ID,
-						mount: { kind: "scene" },
-						plane: "under-interaction",
-						pointerEvents: "none",
-						render: ({ sceneWidth, sceneHeight }) => (
-							<SafeZoneOverlay width={sceneWidth} height={sceneHeight} />
-						),
-					},
-				]
-			: [],
+		definitions: SAFE_ZONE_TEMPLATE_IDS.map(
+			(templateId) => SAFE_ZONE_TEMPLATES[templateId].overlay,
+		),
+		instances: visibleTemplateIds.map((templateId) => {
+			const template = SAFE_ZONE_TEMPLATES[templateId];
+			return {
+				id: template.overlay.id,
+				mount: { kind: "scene" as const },
+				plane: "under-interaction" as const,
+				pointerEvents: "none" as const,
+				render: ({
+					sceneWidth,
+					sceneHeight,
+				}: {
+					sceneWidth: number;
+					sceneHeight: number;
+				}) => (
+					<SafeZoneOverlay
+						template={template}
+						width={sceneWidth}
+						height={sceneHeight}
+					/>
+				),
+			};
+		}),
 	};
 }
