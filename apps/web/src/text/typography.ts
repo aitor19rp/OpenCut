@@ -7,3 +7,9 @@ export const DEFAULT_TEXT_COLOR = "#000000";
  * lower value: larger font size
  */
 export const FONT_SIZE_SCALE_REFERENCE = 90;
+
+/**
+ * Font size at which background padding is applied 1:1. Kept separate from the
+ * default text size so changing that default doesn't rescale existing texts.
+ */
+export const BACKGROUND_PADDING_FONT_SIZE_REFERENCE = 15;

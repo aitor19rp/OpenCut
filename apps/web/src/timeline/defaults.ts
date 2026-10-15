@@ -34,15 +34,17 @@ const defaultTextStroke = {
 	width: 10,
 };
 
+export const DEFAULT_TEXT_FONT_FAMILY = "TikTok Sans";
+
 const defaultTextElement: Omit<TextElement, "id"> = {
 	type: "text",
 	name: "Text",
 	content: "Default text",
-	fontSize: 15,
-	fontFamily: "Arial",
+	fontSize: 30,
+	fontFamily: DEFAULT_TEXT_FONT_FAMILY,
 	color: "#ffffff",
 	background: { ...defaultTextBackground },
-	stroke: { ...defaultTextStroke },
+	stroke: { ...defaultTextStroke, enabled: true },
 	textAlign: "center",
 	fontWeight: "normal",
 	fontStyle: "normal",

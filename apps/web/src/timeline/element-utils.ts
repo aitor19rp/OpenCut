@@ -123,8 +123,14 @@ export function buildTextElement({
 		fontSize: t.fontSize ?? DEFAULTS.text.element.fontSize,
 		fontFamily: t.fontFamily ?? DEFAULTS.text.element.fontFamily,
 		color: t.color ?? DEFAULTS.text.element.color,
-		background: buildTextBackground(t.background),
-		stroke: { ...DEFAULTS.text.stroke, ...t.stroke },
+		// Text with no style info (e.g. dragged in from the assets panel) gets
+		// the default text's look rather than a stray black background.
+		background: t.background
+			? buildTextBackground(t.background)
+			: { ...DEFAULTS.text.element.background },
+		stroke: t.stroke
+			? { ...DEFAULTS.text.stroke, ...t.stroke }
+			: { ...DEFAULTS.text.stroke, ...DEFAULTS.text.element.stroke },
 		textAlign: t.textAlign ?? DEFAULTS.text.element.textAlign,
 		fontWeight: t.fontWeight ?? DEFAULTS.text.element.fontWeight,
 		fontStyle: t.fontStyle ?? DEFAULTS.text.element.fontStyle,

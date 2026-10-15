@@ -27,18 +27,7 @@ import { PREVIEW_ZOOM_PRESETS } from "@/preview/zoom";
 import { usePreviewViewport } from "./preview-viewport";
 import { GridPopover } from "./guide-popover";
 import { usePreviewStore } from "@/preview/preview-store";
-import {
-	SAFE_ZONE_TEMPLATE_IDS,
-	SAFE_ZONE_TEMPLATES,
-	type SafeZoneTemplateId,
-} from "@/preview/safe-zone-overlay";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SAFE_ZONE_TEMPLATES } from "@/preview/safe-zone-overlay";
 import { isPreviewOverlayVisible } from "@/preview/overlays";
 import type { MediaTime } from "@/wasm";
 
@@ -164,51 +153,24 @@ function ZoomSelect() {
 }
 
 function SafeZoneButton() {
-	const overlays = usePreviewStore((state) => state.overlays);
+	const overlay = SAFE_ZONE_TEMPLATES.reels.overlay;
+	const isVisible = usePreviewStore((state) =>
+		isPreviewOverlayVisible({ overlay, overlays: state.overlays }),
+	);
 	const setOverlayVisibility = usePreviewStore(
 		(state) => state.setOverlayVisibility,
 	);
-	const activeTemplateId =
-		SAFE_ZONE_TEMPLATE_IDS.find((templateId) =>
-			isPreviewOverlayVisible({
-				overlay: SAFE_ZONE_TEMPLATES[templateId].overlay,
-				overlays,
-			}),
-		) ?? "none";
-
-	const selectTemplate = (value: string) => {
-		for (const templateId of SAFE_ZONE_TEMPLATE_IDS) {
-			setOverlayVisibility({
-				overlayId: SAFE_ZONE_TEMPLATES[templateId].overlay.id,
-				isVisible: templateId === (value as SafeZoneTemplateId),
-			});
-		}
-	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					variant={activeTemplateId === "none" ? "text" : "secondary"}
-					title="Safe zone"
-				>
-					<HugeiconsIcon icon={SquareIcon} />
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				<DropdownMenuRadioGroup
-					value={activeTemplateId}
-					onValueChange={selectTemplate}
-				>
-					<DropdownMenuRadioItem value="none">No safe zone</DropdownMenuRadioItem>
-					{SAFE_ZONE_TEMPLATE_IDS.map((templateId) => (
-						<DropdownMenuRadioItem key={templateId} value={templateId}>
-							{SAFE_ZONE_TEMPLATES[templateId].overlay.label}
-						</DropdownMenuRadioItem>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<Button
+			variant={isVisible ? "secondary" : "text"}
+			onClick={() =>
+				setOverlayVisibility({ overlayId: overlay.id, isVisible: !isVisible })
+			}
+			title={isVisible ? "Hide safe zone" : "Show safe zone (Instagram Reels)"}
+		>
+			<HugeiconsIcon icon={SquareIcon} />
+		</Button>
 	);
 }
 

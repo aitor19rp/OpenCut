@@ -61,6 +61,7 @@ export interface ElementSelectionApi {
 
 export interface PlaybackReader {
 	getCurrentTime: () => MediaTime;
+	seek: (params: { time: MediaTime }) => void;
 }
 
 export interface TimelineOps {
@@ -403,6 +404,9 @@ export class ElementInteractionController {
 		}
 
 		if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+
+		// Jump to the clip's first frame so what you selected is what you see.
+		this.deps.playback.seek({ time: element.startTime });
 
 		const ref = { trackId: track.id, elementId: element.id };
 		if (

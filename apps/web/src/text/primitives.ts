@@ -8,7 +8,10 @@ import {
 	measureTextBlock,
 	setCanvasLetterSpacing,
 } from "./layout";
-import { FONT_SIZE_SCALE_REFERENCE } from "./typography";
+import {
+	BACKGROUND_PADDING_FONT_SIZE_REFERENCE,
+	FONT_SIZE_SCALE_REFERENCE,
+} from "./typography";
 
 export type TextAlign = "left" | "center" | "right";
 export type TextFontWeight = "normal" | "bold";
@@ -100,7 +103,7 @@ export function resolveTextLayout({
 	const letterSpacing = text.letterSpacing ?? DEFAULTS.text.letterSpacing;
 	const lineHeightPx =
 		scaledFontSize * (text.lineHeight ?? DEFAULTS.text.lineHeight);
-	const fontSizeRatio = text.fontSize / DEFAULTS.text.element.fontSize;
+	const fontSizeRatio = text.fontSize / BACKGROUND_PADDING_FONT_SIZE_REFERENCE;
 
 	return {
 		scaledFontSize,

@@ -54,6 +54,7 @@ export function useElementInteraction({
 		},
 		playback: {
 			getCurrentTime: () => editor.playback.getCurrentTime(),
+			seek: ({ time }) => editor.playback.seek({ time }),
 		},
 		timeline: {
 			moveElements: (args) => editor.timeline.moveElements(args),

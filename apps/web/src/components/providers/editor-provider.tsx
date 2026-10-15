@@ -9,7 +9,8 @@ import { useKeybindingsListener } from "@/actions/use-keybindings";
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
-import { loadFontAtlas } from "@/fonts/google-fonts";
+import { loadFontAtlas, loadFullFont } from "@/fonts/google-fonts";
+import { DEFAULT_TEXT_FONT_FAMILY } from "@/timeline/defaults";
 import {
 	initializeGpuRenderer,
 	isGpuAvailable,
@@ -46,6 +47,8 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 				setIsLoading(false);
 				loadFontAtlas();
+				// Preload so new texts render with the default font right away.
+				void loadFullFont({ family: DEFAULT_TEXT_FONT_FAMILY });
 			} catch (err) {
 				if (cancelled) return;
 

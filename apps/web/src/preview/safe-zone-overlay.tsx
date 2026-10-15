@@ -59,9 +59,6 @@ function SafeZoneOverlay({
 		y: ((point.y - frame.top) / frame.height) * height,
 	}));
 	const outline = `M${points.map((point) => `${point.x} ${point.y}`).join("L")}Z`;
-	const xs = points.map((point) => point.x);
-	const ys = points.map((point) => point.y);
-	const fontSize = Math.max(9, Math.min(14, width / 28));
 
 	return (
 		<svg
@@ -84,16 +81,6 @@ function SafeZoneOverlay({
 				strokeWidth={1}
 				strokeDasharray="6 4"
 			/>
-			<text
-				x={(Math.min(...xs) + Math.max(...xs)) / 2}
-				y={(Math.min(...ys) + Math.max(...ys)) / 2}
-				textAnchor="middle"
-				fill={OUTLINE}
-				fontSize={fontSize}
-				style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.5)", strokeWidth: 2 }}
-			>
-				Safe zone
-			</text>
 		</svg>
 	);
 }
@@ -104,9 +91,8 @@ export function getSafeZonePreviewOverlaySource({
 	visibleTemplateIds: SafeZoneTemplateId[];
 }): PreviewOverlaySourceResult {
 	return {
-		definitions: SAFE_ZONE_TEMPLATE_IDS.map(
-			(templateId) => SAFE_ZONE_TEMPLATES[templateId].overlay,
-		),
+		// Toggled from the preview toolbar only, so not listed in the context menu.
+		definitions: [],
 		instances: visibleTemplateIds.map((templateId) => {
 			const template = SAFE_ZONE_TEMPLATES[templateId];
 			return {

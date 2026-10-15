@@ -34,6 +34,8 @@ import {
 	SnowIcon,
 	ScissorIcon,
 	MagnetIcon,
+	RedoIcon,
+	UndoIcon,
 	CollapseIcon,
 	SearchAddIcon,
 	SearchMinusIcon,
@@ -143,6 +145,20 @@ function ToolbarLeftSection() {
 	return (
 		<div className="flex items-center gap-1">
 			<TooltipProvider delayDuration={500}>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={UndoIcon} />}
+					tooltip="Undo (Ctrl+Z)"
+					onClick={({ event }) => handleAction({ action: "undo", event })}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={RedoIcon} />}
+					tooltip="Redo (Ctrl+Shift+Z)"
+					onClick={({ event }) => handleAction({ action: "redo", event })}
+				/>
+
+				<div className="bg-border mx-1 h-6 w-px" />
+
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={ScissorIcon} />}
 					tooltip="Split element"

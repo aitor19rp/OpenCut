@@ -1,4 +1,7 @@
-import { FONT_SIZE_SCALE_REFERENCE } from "@/text/typography";
+import {
+	BACKGROUND_PADDING_FONT_SIZE_REFERENCE,
+	FONT_SIZE_SCALE_REFERENCE,
+} from "@/text/typography";
 import {
 	getTextVisualRect,
 	measureTextBlock,
@@ -107,7 +110,7 @@ function measureWrappedTextBlock({
 		textAlign,
 		block,
 		background,
-		fontSizeRatio: fontSize / DEFAULTS.text.element.fontSize,
+		fontSizeRatio: fontSize / BACKGROUND_PADDING_FONT_SIZE_REFERENCE,
 	});
 
 	return {
