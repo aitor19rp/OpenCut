@@ -11,6 +11,7 @@ import {
 	PauseIcon,
 	PictureInPictureExitIcon,
 	PictureInPictureOnIcon,
+	SquareIcon,
 	PlayIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -26,6 +27,11 @@ import { PREVIEW_ZOOM_PRESETS } from "@/preview/zoom";
 import { usePreviewViewport } from "./preview-viewport";
 import { GridPopover } from "./guide-popover";
 import { usePreviewStore } from "@/preview/preview-store";
+import {
+	SAFE_ZONE_OVERLAY_ID,
+	safeZonePreviewOverlay,
+} from "@/preview/safe-zone-overlay";
+import { isPreviewOverlayVisible } from "@/preview/overlays";
 import type { MediaTime } from "@/wasm";
 
 export function PreviewToolbar({
@@ -57,6 +63,7 @@ export function PreviewToolbar({
 						)}
 					</Button>
 				</GridPopover> */}
+				<SafeZoneButton />
 				<Button
 					variant="text"
 					onClick={onTogglePopout}
@@ -145,6 +152,30 @@ function ZoomSelect() {
 				))}
 			</SelectContent>
 		</Select>
+	);
+}
+
+function SafeZoneButton() {
+	const isVisible = usePreviewStore((state) =>
+		isPreviewOverlayVisible({
+			overlay: safeZonePreviewOverlay,
+			overlays: state.overlays,
+		}),
+	);
+	const toggleOverlayVisibility = usePreviewStore(
+		(state) => state.toggleOverlayVisibility,
+	);
+
+	return (
+		<Button
+			variant={isVisible ? "secondary" : "text"}
+			onClick={() =>
+				toggleOverlayVisibility({ overlayId: SAFE_ZONE_OVERLAY_ID })
+			}
+			title={isVisible ? "Hide safe zone" : "Show safe zone (Instagram)"}
+		>
+			<HugeiconsIcon icon={SquareIcon} />
+		</Button>
 	);
 }
 
