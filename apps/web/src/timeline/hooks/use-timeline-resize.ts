@@ -11,6 +11,7 @@ import {
 import type { ResizeSide } from "@/timeline/group-resize";
 import type { SnapPoint } from "@/timeline/snapping";
 import type { TimelineElement } from "@/timeline";
+import type { MediaTime } from "@/wasm";
 
 export type { ResizeSide };
 
@@ -26,6 +27,10 @@ export function useTimelineResize({
 	const editor = useEditor();
 	const isShiftHeldRef = useShiftKey();
 	const snappingEnabled = useTimelineStore((state) => state.snappingEnabled);
+	const setResizingElementIds = useTimelineStore(
+		(state) => state.setResizingElementIds,
+	);
+	const playheadBeforeResizeRef = useRef<MediaTime | null>(null);
 	const { selectedElements } = useElementSelection();
 
 	const config: ResizeConfig = {
@@ -54,6 +59,21 @@ export function useTimelineResize({
 				})),
 			}),
 		onSnapPointChange,
+		previewFrameAt: ({ time }) => {
+			if (playheadBeforeResizeRef.current === null) {
+				playheadBeforeResizeRef.current = editor.playback.getCurrentTime();
+				editor.playback.pause();
+			}
+			editor.playback.seek({ time });
+		},
+		endFramePreview: () => {
+			const previousTime = playheadBeforeResizeRef.current;
+			playheadBeforeResizeRef.current = null;
+			if (previousTime !== null) {
+				editor.playback.seek({ time: previousTime });
+			}
+		},
+		onResizingElementsChange: setResizingElementIds,
 	};
 
 	const configRef = useRef(config);

@@ -267,6 +267,9 @@ export function TimelineElement({
 			: renderElement.startTime;
 	const displayedStartTime = elementStartTime;
 	const displayedDuration = renderElement.duration;
+	const isBeingResized = useTimelineStore((state) =>
+		state.resizingElementIds.has(element.id),
+	);
 	const elementWidth = timelineTimeToPixels({
 		time: displayedDuration,
 		zoomLevel,
@@ -403,6 +406,13 @@ export function TimelineElement({
 							onResizeStart={onResizeStart}
 							isDropTarget={isDropTarget}
 						/>
+						{isBeingResized && (
+							<div
+								className="pointer-events-none absolute top-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[10px] text-white tabular-nums"
+							>
+								{formatClipDuration({ duration: displayedDuration })}
+							</div>
+						)}
 						{isSelected && (
 							<div
 								className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
@@ -1302,4 +1312,12 @@ function ActionMenuItem({
 			{children}
 		</ContextMenuItem>
 	);
+}
+
+function formatClipDuration({ duration }: { duration: MediaTime }): string {
+	const seconds = duration / TICKS_PER_SECOND;
+	return `${seconds.toLocaleString(undefined, {
+		minimumFractionDigits: 1,
+		maximumFractionDigits: 1,
+	})} s`;
 }

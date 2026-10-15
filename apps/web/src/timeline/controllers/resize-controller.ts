@@ -61,6 +61,11 @@ export interface ResizeConfig {
 	previewElements: (updates: GroupResizeUpdate[]) => void;
 	commitElements: (updates: GroupResizeUpdate[]) => void;
 	onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
+	/** Shows the frame at the edge being trimmed in the preview while dragging. */
+	previewFrameAt?: (params: { time: MediaTime }) => void;
+	/** Called once the drag ends, to restore whatever previewFrameAt changed. */
+	endFramePreview?: () => void;
+	onResizingElementsChange?: (elementIds: string[]) => void;
 }
 
 export interface ResizeConfigRef {
@@ -136,6 +141,31 @@ export function buildResizeMembers({
 				rightNeighborBound,
 			},
 		];
+	});
+}
+
+function getTrimmedEdgeTime({
+	result,
+	side,
+	fps,
+}: {
+	result: GroupResizeResult;
+	side: ResizeSide;
+	fps: FrameRate;
+}): MediaTime | null {
+	const update = result.updates[0];
+	if (!update) return null;
+	const { startTime, duration } = update.patch;
+	if (side === "left") return startTime;
+	// The end time itself is the first frame after the clip, so step back one.
+	const ticksPerFrame = Math.round(
+		(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
+	);
+	const frameDuration = mediaTime({ ticks: ticksPerFrame });
+	if (duration <= frameDuration) return startTime;
+	return addMediaTime({
+		a: startTime,
+		b: subMediaTime({ a: duration, b: frameDuration }),
 	});
 }
 
@@ -238,6 +268,9 @@ export class ResizeController {
 			members,
 			result: null,
 		};
+		this.config.onResizingElementsChange?.(
+			members.map((member) => member.elementId),
+		);
 		this.activate();
 		this.notify();
 	}
@@ -257,9 +290,14 @@ export class ResizeController {
 	}
 
 	private finishSession(): void {
+		const wasActive = this.session.kind === "active";
 		this.session = { kind: "idle" };
 		this.deactivate();
 		this.config.onSnapPointChange?.(null);
+		if (wasActive) {
+			this.config.endFramePreview?.();
+			this.config.onResizingElementsChange?.([]);
+		}
 		this.notify();
 	}
 
@@ -340,6 +378,15 @@ export class ResizeController {
 
 		session.result = result;
 		this.config.previewElements(result.updates);
+
+		const edgeTime = getTrimmedEdgeTime({
+			result,
+			side: session.side,
+			fps: session.fps,
+		});
+		if (edgeTime !== null) {
+			this.config.previewFrameAt?.({ time: edgeTime });
+		}
 	}
 
 	private handleMouseUp(): void {

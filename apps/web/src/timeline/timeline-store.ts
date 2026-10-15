@@ -13,6 +13,9 @@ interface TimelineStore {
 	toggleRippleEditing: () => void;
 	expandedElementIds: Set<string>;
 	toggleElementExpanded: (elementId: string) => void;
+	/** Elements currently being trimmed; not persisted. */
+	resizingElementIds: Set<string>;
+	setResizingElementIds: (elementIds: string[]) => void;
 }
 
 export const useTimelineStore = create<TimelineStore>()(
@@ -44,6 +47,12 @@ export const useTimelineStore = create<TimelineStore>()(
 					}
 					return { expandedElementIds: next };
 				});
+			},
+
+			resizingElementIds: new Set<string>(),
+
+			setResizingElementIds: (elementIds) => {
+				set({ resizingElementIds: new Set(elementIds) });
 			},
 		}),
 		{
