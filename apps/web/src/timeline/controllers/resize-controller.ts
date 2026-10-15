@@ -66,6 +66,8 @@ export interface ResizeConfig {
 	/** Called once the drag ends, to restore whatever previewFrameAt changed. */
 	endFramePreview?: () => void;
 	onResizingElementsChange?: (elementIds: string[]) => void;
+	/** When true, main-track clips stay packed: edges push neighbours instead of stopping at them. */
+	isMagneticMainTrack?: () => boolean;
 }
 
 export interface ResizeConfigRef {
@@ -74,12 +76,21 @@ export interface ResizeConfigRef {
 
 // --- Pure helpers ---
 
+/**
+ * Left bound used on a magnetic track: far enough that only the clip's own
+ * trimmed source limits how far its start can be extended.
+ */
+const UNBOUNDED_LEFT = mediaTime({ ticks: -(2 ** 50) });
+
 export function buildResizeMembers({
 	tracks,
 	selectedElements,
+	unboundedTrackId,
 }: {
 	tracks: SceneTracks;
 	selectedElements: ElementRef[];
+	/** Track whose neighbours don't limit resizing (the magnetic main track). */
+	unboundedTrackId?: string;
 }): GroupResizeMember[] {
 	const selectedElementIds = new Set(
 		selectedElements.map((el) => el.elementId),
@@ -137,8 +148,10 @@ export function buildResizeMembers({
 				trimEnd: element.trimEnd,
 				sourceDuration: element.sourceDuration,
 				retime: isRetimableElement(element) ? element.retime : undefined,
-				leftNeighborBound,
-				rightNeighborBound,
+				leftNeighborBound:
+					trackId === unboundedTrackId ? UNBOUNDED_LEFT : leftNeighborBound,
+				rightNeighborBound:
+					trackId === unboundedTrackId ? null : rightNeighborBound,
 			},
 		];
 	});
@@ -146,14 +159,18 @@ export function buildResizeMembers({
 
 function getTrimmedEdgeTime({
 	result,
+	elementId,
 	side,
 	fps,
 }: {
 	result: GroupResizeResult;
+	elementId: string;
 	side: ResizeSide;
 	fps: FrameRate;
 }): MediaTime | null {
-	const update = result.updates[0];
+	const update = result.updates.find(
+		(candidate) => candidate.elementId === elementId,
+	);
 	if (!update) return null;
 	const { startTime, duration } = update.patch;
 	if (side === "left") return startTime;
@@ -167,6 +184,51 @@ function getTrimmedEdgeTime({
 		a: startTime,
 		b: subMediaTime({ a: duration, b: frameDuration }),
 	});
+}
+
+/**
+ * Re-lays the main track back to back in its original order, applying the
+ * resized clips' new trims and durations, so neighbours move out of the way.
+ */
+function packMainTrackUpdates({
+	mainTrack,
+	updates,
+}: {
+	mainTrack: TimelineTrack;
+	updates: GroupResizeUpdate[];
+}): GroupResizeUpdate[] {
+	const updatesById = new Map(
+		updates
+			.filter((update) => update.trackId === mainTrack.id)
+			.map((update) => [update.elementId, update]),
+	);
+	const otherUpdates = updates.filter(
+		(update) => update.trackId !== mainTrack.id,
+	);
+	const sortedElements = [...mainTrack.elements].sort(
+		(a, b) => a.startTime - b.startTime,
+	);
+
+	let cursor = mediaTime({ ticks: 0 });
+	const packed: GroupResizeUpdate[] = [];
+	for (const element of sortedElements) {
+		const update = updatesById.get(element.id);
+		const duration = update?.patch.duration ?? element.duration;
+		if (update || element.startTime !== cursor) {
+			packed.push({
+				trackId: mainTrack.id,
+				elementId: element.id,
+				patch: {
+					trimStart: update?.patch.trimStart ?? element.trimStart,
+					trimEnd: update?.patch.trimEnd ?? element.trimEnd,
+					startTime: cursor,
+					duration,
+				},
+			});
+		}
+		cursor = addMediaTime({ a: cursor, b: duration });
+	}
+	return [...otherUpdates, ...packed];
 }
 
 function hasResizeChanges({
@@ -252,9 +314,13 @@ export class ResizeController {
 			? this.config.selectedElements
 			: [ref];
 
+		const sceneTracks = this.config.getSceneTracks();
 		const members = buildResizeMembers({
-			tracks: this.config.getSceneTracks(),
+			tracks: sceneTracks,
 			selectedElements: activeSelection,
+			unboundedTrackId: this.config.isMagneticMainTrack?.()
+				? sceneTracks.main.id
+				: undefined,
 		});
 		if (members.length === 0) return;
 
@@ -369,18 +435,28 @@ export class ResizeController {
 			),
 		});
 		const deltaTime = this.snappedDelta(session, rawDeltaTime);
-		const result = computeGroupResize({
+		const computed = computeGroupResize({
 			members: session.members,
 			side: session.side,
 			deltaTime,
 			fps: session.fps,
 		});
+		const result = this.config.isMagneticMainTrack?.()
+			? {
+					...computed,
+					updates: packMainTrackUpdates({
+						mainTrack: this.config.getSceneTracks().main,
+						updates: computed.updates,
+					}),
+				}
+			: computed;
 
 		session.result = result;
 		this.config.previewElements(result.updates);
 
 		const edgeTime = getTrimmedEdgeTime({
 			result,
+			elementId: session.members[0].elementId,
 			side: session.side,
 			fps: session.fps,
 		});

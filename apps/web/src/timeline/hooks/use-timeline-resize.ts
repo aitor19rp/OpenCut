@@ -74,6 +74,8 @@ export function useTimelineResize({
 			}
 		},
 		onResizingElementsChange: setResizingElementIds,
+		isMagneticMainTrack: () =>
+			useTimelineStore.getState().magneticMainTrackEnabled,
 	};
 
 	const configRef = useRef(config);
