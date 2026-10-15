@@ -20,6 +20,11 @@ import type {
 import { PreviewContextMenu } from "./context-menu";
 import { PreviewToolbar } from "./toolbar";
 import {
+	copyFrameToPopout,
+	PopoutPlayerPortal,
+	usePreviewPopout,
+} from "./popout-player";
+import {
 	PreviewViewportProvider,
 	usePreviewViewportState,
 } from "./preview-viewport";
@@ -158,6 +163,20 @@ function PreviewCanvas({
 		});
 	}, [nativeWidth, nativeHeight, activeProject.settings.fps]);
 
+	const popout = usePreviewPopout({
+		canvasWidth: nativeWidth,
+		canvasHeight: nativeHeight,
+	});
+	const popoutCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+	// Force a render when the pop-out opens so it shows the current frame
+	// even while playback is paused.
+	useEffect(() => {
+		if (popout.popoutWindow) {
+			lastFrameRef.current = -1;
+		}
+	}, [popout.popoutWindow]);
+
 	// Mount the compositor's output canvas directly into the preview. wgpu
 	// renders straight into this element, so there is no intermediate copy —
 	// the container div owns positioning/styling, the canvas itself fills it.
@@ -201,6 +220,10 @@ function PreviewCanvas({
 		renderer
 			.render({ node: renderTree, time: renderTime })
 			.then(() => {
+				copyFrameToPopout({
+					source: renderer.getOutputCanvas(),
+					target: popoutCanvasRef.current,
+				});
 				renderingRef.current = false;
 			});
 	}, [renderer, renderTree, editor.playback, editor.timeline]);
@@ -335,8 +358,18 @@ function PreviewCanvas({
 						/>
 					</ContextMenu>
 				</div>
-				<PreviewToolbar onToggleFullscreen={onToggleFullscreen} />
+				<PreviewToolbar
+					onToggleFullscreen={onToggleFullscreen}
+					onTogglePopout={popout.togglePopout}
+					isPoppedOut={popout.isPoppedOut}
+				/>
 			</div>
+			<PopoutPlayerPortal
+				popoutWindow={popout.popoutWindow}
+				canvasRef={popoutCanvasRef}
+				width={nativeWidth}
+				height={nativeHeight}
+			/>
 		</PreviewViewportProvider>
 	);
 }

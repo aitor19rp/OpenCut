@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import {
 	FullScreenIcon,
 	PauseIcon,
+	PictureInPictureExitIcon,
+	PictureInPictureOnIcon,
 	PlayIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -28,8 +30,12 @@ import type { MediaTime } from "@/wasm";
 
 export function PreviewToolbar({
 	onToggleFullscreen,
+	onTogglePopout,
+	isPoppedOut,
 }: {
 	onToggleFullscreen: () => void;
+	onTogglePopout: () => void;
+	isPoppedOut: boolean;
 }) {
 	return (
 		<div className="grid grid-cols-[1fr_auto_1fr] items-center pb-3 pt-5 px-5">
@@ -51,6 +57,17 @@ export function PreviewToolbar({
 						)}
 					</Button>
 				</GridPopover> */}
+				<Button
+					variant="text"
+					onClick={onTogglePopout}
+					title={isPoppedOut ? "Close pop-out player" : "Pop out player"}
+				>
+					<HugeiconsIcon
+						icon={
+							isPoppedOut ? PictureInPictureExitIcon : PictureInPictureOnIcon
+						}
+					/>
+				</Button>
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>
@@ -59,7 +76,7 @@ export function PreviewToolbar({
 	);
 }
 
-function TimecodeDisplay() {
+export function TimecodeDisplay() {
 	const editor = useEditor();
 	const totalDuration = useEditor((e) => e.timeline.getTotalDuration());
 	const fps = useEditor((e) => e.project.getActive().settings.fps);
@@ -131,7 +148,7 @@ function ZoomSelect() {
 	);
 }
 
-function PlayPauseButton() {
+export function PlayPauseButton() {
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
 
 	return (
