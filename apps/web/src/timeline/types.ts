@@ -152,6 +152,13 @@ export interface TextBackground {
 	offsetY?: number;
 }
 
+export interface TextStroke {
+	enabled: boolean;
+	color: string;
+	/** Stroke thickness as a percentage of the font size. */
+	width: number;
+}
+
 export interface TextElement extends BaseTimelineElement {
 	type: "text";
 	content: string;
@@ -159,6 +166,7 @@ export interface TextElement extends BaseTimelineElement {
 	fontFamily: string;
 	color: string;
 	background: TextBackground;
+	stroke?: TextStroke;
 	textAlign: "left" | "center" | "right";
 	fontWeight: "normal" | "bold";
 	fontStyle: "normal" | "italic";

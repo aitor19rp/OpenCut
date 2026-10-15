@@ -28,6 +28,12 @@ const defaultTextBackground = {
 	offsetY: 0,
 };
 
+const defaultTextStroke = {
+	enabled: false,
+	color: "#000000",
+	width: 10,
+};
+
 const defaultTextElement: Omit<TextElement, "id"> = {
 	type: "text",
 	name: "Text",
@@ -36,6 +42,7 @@ const defaultTextElement: Omit<TextElement, "id"> = {
 	fontFamily: "Arial",
 	color: "#ffffff",
 	background: { ...defaultTextBackground },
+	stroke: { ...defaultTextStroke },
 	textAlign: "center",
 	fontWeight: "normal",
 	fontStyle: "normal",
@@ -70,6 +77,7 @@ export const DEFAULTS = {
 		letterSpacing: defaultTextLetterSpacing,
 		lineHeight: defaultTextLineHeight,
 		background: defaultTextBackground,
+		stroke: defaultTextStroke,
 		element: defaultTextElement,
 	},
 	timeline: {

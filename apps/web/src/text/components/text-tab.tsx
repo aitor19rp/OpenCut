@@ -19,6 +19,7 @@ import { uppercase } from "@/utils/string";
 import { clamp, formatNumberForDisplay } from "@/utils/math";
 import { useEditor } from "@/editor/use-editor";
 import { CORNER_RADIUS_MAX, CORNER_RADIUS_MIN } from "@/text/background";
+import { TEXT_STROKE_WIDTH_MAX, TEXT_STROKE_WIDTH_MIN } from "@/text/stroke";
 import {
 	DEFAULT_TEXT_COLOR,
 	MAX_FONT_SIZE,
@@ -56,6 +57,7 @@ export function TextTab({
 			<ContentSection element={element} trackId={trackId} />
 			<TypographySection element={element} trackId={trackId} />
 			<SpacingSection element={element} trackId={trackId} />
+			<StrokeSection element={element} trackId={trackId} />
 			<BackgroundSection element={element} trackId={trackId} />
 		</div>
 	);
@@ -757,6 +759,173 @@ function BackgroundSection({
 								resolvedValue: resolvedCornerRadius,
 								staticValue: bg.cornerRadius ?? CORNER_RADIUS_MIN,
 								defaultValue: CORNER_RADIUS_MIN,
+							})}
+						/>
+					</SectionField>
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+function StrokeSection({
+	element,
+	trackId,
+}: {
+	element: TextElement;
+	trackId: string;
+}) {
+	const editor = useEditor();
+	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
+		startTime: element.startTime,
+		duration: element.duration,
+	});
+	const stroke = { ...DEFAULTS.text.stroke, ...element.stroke };
+
+	const resolvedStrokeColor = resolveColorAtTime({
+		baseColor: stroke.color,
+		animations: element.animations,
+		propertyPath: "stroke.color",
+		localTime,
+	});
+	const resolvedStrokeWidth = resolveNumberAtTime({
+		baseValue: stroke.width,
+		animations: element.animations,
+		propertyPath: "stroke.width",
+		localTime,
+	});
+
+	const strokeColor = useKeyframedColorProperty({
+		trackId,
+		elementId: element.id,
+		animations: element.animations,
+		propertyPath: "stroke.color",
+		localTime,
+		isPlayheadWithinElementRange,
+		resolvedColor: resolvedStrokeColor,
+		buildBaseUpdates: ({ value }) => ({
+			stroke: { ...stroke, color: value },
+		}),
+	});
+
+	const strokeWidth = useKeyframedNumberProperty({
+		trackId,
+		elementId: element.id,
+		animations: element.animations,
+		propertyPath: "stroke.width",
+		localTime,
+		isPlayheadWithinElementRange,
+		displayValue: Math.round(resolvedStrokeWidth).toString(),
+		parse: (input) => {
+			const parsed = parseFloat(input);
+			if (Number.isNaN(parsed)) return null;
+			return clamp({
+				value: Math.round(parsed),
+				min: TEXT_STROKE_WIDTH_MIN,
+				max: TEXT_STROKE_WIDTH_MAX,
+			});
+		},
+		valueAtPlayhead: resolvedStrokeWidth,
+		step: 1,
+		buildBaseUpdates: ({ value }) => ({
+			stroke: { ...stroke, width: value },
+		}),
+	});
+
+	const toggleStrokeEnabled = () => {
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId,
+					elementId: element.id,
+					patch: {
+						stroke: { ...stroke, enabled: !stroke.enabled },
+					},
+				},
+			],
+		});
+	};
+
+	return (
+		<Section
+			collapsible
+			defaultOpen={stroke.enabled}
+			sectionKey={`${element.id}:stroke`}
+		>
+			<SectionHeader
+				trailing={
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={(event) => {
+							event.stopPropagation();
+							toggleStrokeEnabled();
+						}}
+					>
+						<HugeiconsIcon
+							icon={stroke.enabled ? MinusSignIcon : PlusSignIcon}
+							strokeWidth={1}
+						/>
+					</Button>
+				}
+			>
+				<SectionTitle>Stroke</SectionTitle>
+			</SectionHeader>
+			<SectionContent
+				className={cn(!stroke.enabled && "pointer-events-none opacity-50")}
+			>
+				<SectionFields>
+					<SectionField
+						label="Color"
+						beforeLabel={
+							<KeyframeToggle
+								isActive={strokeColor.isKeyframedAtTime}
+								isDisabled={!isPlayheadWithinElementRange}
+								title="Toggle stroke color keyframe"
+								onToggle={strokeColor.toggleKeyframe}
+							/>
+						}
+					>
+						<ColorPicker
+							value={uppercase({
+								string: resolvedStrokeColor.replace("#", ""),
+							})}
+							onChange={(color) => strokeColor.onChange({ color: `#${color}` })}
+							onChangeEnd={strokeColor.onChangeEnd}
+						/>
+					</SectionField>
+					<SectionField
+						label="Width"
+						beforeLabel={
+							<KeyframeToggle
+								isActive={strokeWidth.isKeyframedAtTime}
+								isDisabled={!isPlayheadWithinElementRange}
+								title="Toggle stroke width keyframe"
+								onToggle={strokeWidth.toggleKeyframe}
+							/>
+						}
+					>
+						<NumberField
+							icon="W"
+							value={strokeWidth.displayValue}
+							min={TEXT_STROKE_WIDTH_MIN}
+							max={TEXT_STROKE_WIDTH_MAX}
+							onFocus={strokeWidth.onFocus}
+							onChange={strokeWidth.onChange}
+							onBlur={strokeWidth.onBlur}
+							onScrub={strokeWidth.scrubTo}
+							onScrubEnd={strokeWidth.commitScrub}
+							onReset={() =>
+								strokeWidth.commitValue({
+									value: DEFAULTS.text.stroke.width,
+								})
+							}
+							isDefault={isPropertyAtDefault({
+								hasAnimatedKeyframes: strokeWidth.hasAnimatedKeyframes,
+								isPlayheadWithinElementRange,
+								resolvedValue: resolvedStrokeWidth,
+								staticValue: stroke.width,
+								defaultValue: DEFAULTS.text.stroke.width,
 							})}
 						/>
 					</SectionField>

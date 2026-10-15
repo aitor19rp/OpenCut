@@ -16,6 +16,7 @@ export interface ResolvedTextNodeState {
 	opacity: number;
 	textColor: string;
 	backgroundColor: string;
+	strokeColor: string;
 	effectPasses: EffectPass[][];
 	measuredText: MeasuredTextElement;
 }
@@ -51,6 +52,10 @@ export function renderTextToContext({
 		textColor: resolved.textColor,
 		background: resolved.measuredText.resolvedBackground,
 		backgroundColor: resolved.backgroundColor,
+		stroke: {
+			color: resolved.strokeColor,
+			widthPx: resolved.measuredText.resolvedStroke.widthPx,
+		},
 		textBaseline: baseline,
 	});
 

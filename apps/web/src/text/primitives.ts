@@ -53,6 +53,21 @@ export interface ResolvedTextBackgroundLike {
 	cornerRadius: number;
 }
 
+export interface ResolvedTextStrokeLike {
+	color: string;
+	widthPx: number;
+}
+
+export function getTextStrokeWidthPx({
+	width,
+	scaledFontSize,
+}: {
+	width: number;
+	scaledFontSize: number;
+}): number {
+	return Math.max(0, (width / 100) * scaledFontSize);
+}
+
 export function quoteFontFamily({ fontFamily }: { fontFamily: string }): string {
 	return `"${fontFamily.replace(/"/g, '\\"')}"`;
 }
@@ -144,6 +159,7 @@ export function drawMeasuredTextLayout({
 	textColor,
 	background,
 	backgroundColor,
+	stroke,
 	textBaseline = "middle",
 }: {
 	ctx: TextCanvasContext;
@@ -151,6 +167,7 @@ export function drawMeasuredTextLayout({
 	textColor: string;
 	background?: ResolvedTextBackgroundLike | null;
 	backgroundColor?: string;
+	stroke?: ResolvedTextStrokeLike | null;
 	textBaseline?: CanvasTextBaseline;
 }): void {
 	ctx.font = layout.fontString;
@@ -197,8 +214,22 @@ export function drawMeasuredTextLayout({
 		}
 	}
 
+	const hasStroke =
+		!!stroke && stroke.widthPx > 0 && stroke.color !== "transparent";
+	if (hasStroke) {
+		ctx.strokeStyle = stroke.color;
+		ctx.lineWidth = stroke.widthPx;
+		ctx.lineJoin = "round";
+		ctx.lineCap = "round";
+		ctx.miterLimit = 2;
+	}
+
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
+		// Stroke first so the fill covers its inner half, leaving an outside border.
+		if (hasStroke) {
+			ctx.strokeText(layout.lines[index], 0, lineY);
+		}
 		ctx.fillText(layout.lines[index], 0, lineY);
 		drawTextDecoration({
 			ctx,

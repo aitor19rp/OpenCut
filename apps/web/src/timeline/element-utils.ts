@@ -124,6 +124,7 @@ export function buildTextElement({
 		fontFamily: t.fontFamily ?? DEFAULTS.text.element.fontFamily,
 		color: t.color ?? DEFAULTS.text.element.color,
 		background: buildTextBackground(t.background),
+		stroke: { ...DEFAULTS.text.stroke, ...t.stroke },
 		textAlign: t.textAlign ?? DEFAULTS.text.element.textAlign,
 		fontWeight: t.fontWeight ?? DEFAULTS.text.element.fontWeight,
 		fontStyle: t.fontStyle ?? DEFAULTS.text.element.fontStyle,

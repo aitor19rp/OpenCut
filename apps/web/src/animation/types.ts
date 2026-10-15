@@ -16,6 +16,8 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"background.offsetX",
 	"background.offsetY",
 	"background.cornerRadius",
+	"stroke.color",
+	"stroke.width",
 ] as const;
 
 export type AnimationPropertyPath = (typeof ANIMATION_PROPERTY_PATHS)[number];
@@ -50,6 +52,8 @@ export interface AnimationPropertyValueMap {
 	"background.offsetX": number;
 	"background.offsetY": number;
 	"background.cornerRadius": number;
+	"stroke.color": string;
+	"stroke.width": number;
 }
 export type DynamicAnimationPathValue = number | string | boolean;
 

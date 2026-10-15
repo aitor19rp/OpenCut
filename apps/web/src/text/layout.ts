@@ -144,13 +144,22 @@ export function getTextVisualRect({
 	block,
 	background,
 	fontSizeRatio = 1,
+	strokeWidthPx = 0,
 }: {
 	textAlign: TextElement["textAlign"];
 	block: TextBlockMeasurement;
 	background: TextBackground;
 	fontSizeRatio?: number;
+	strokeWidthPx?: number;
 }): TextRect {
-	const textRect = getTextRect({ textAlign, block });
+	const strokeOverflow = strokeWidthPx / 2;
+	const glyphRect = getTextRect({ textAlign, block });
+	const textRect = {
+		left: glyphRect.left - strokeOverflow,
+		top: glyphRect.top - strokeOverflow,
+		width: glyphRect.width + strokeOverflow * 2,
+		height: glyphRect.height + strokeOverflow * 2,
+	};
 	const backgroundRect = getTextBackgroundRect({
 		textAlign,
 		block,

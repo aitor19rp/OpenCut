@@ -17,6 +17,7 @@ import {
 	measureTextElement,
 } from "@/text/measure-element";
 import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
+import { DEFAULTS } from "@/timeline/defaults";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import { videoCache } from "@/services/video-cache/service";
 import type { CanvasRenderer } from "./canvas-renderer";
@@ -352,6 +353,12 @@ function resolveTextNode({
 			baseColor: node.params.background.color,
 			animations: node.params.animations,
 			propertyPath: "background.color",
+			localTime,
+		}),
+		strokeColor: resolveColorAtTime({
+			baseColor: node.params.stroke?.color ?? DEFAULTS.text.stroke.color,
+			animations: node.params.animations,
+			propertyPath: "stroke.color",
 			localTime,
 		}),
 		effectPasses: resolveEffectPassGroups({

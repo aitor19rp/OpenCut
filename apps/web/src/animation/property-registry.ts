@@ -11,6 +11,7 @@ import {
 	CORNER_RADIUS_MAX,
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
+import { TEXT_STROKE_WIDTH_MAX, TEXT_STROKE_WIDTH_MIN } from "@/text/stroke";
 import {
 	canElementHaveAudio,
 	isVisualElement,
@@ -308,6 +309,46 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 				? {
 						...element,
 						background: { ...element.background, cornerRadius: value as number },
+					}
+				: element,
+	}),
+	"stroke.color": {
+		kind: "color",
+		defaultInterpolation: "linear",
+		supportsElement: ({ element }) => element.type === "text",
+		getValue: ({ element }) =>
+			element.type === "text"
+				? (element.stroke?.color ?? DEFAULTS.text.stroke.color)
+				: null,
+		coerceValue: ({ value }) => coerceColorValue({ value }),
+		setValue: ({ element, value }) =>
+			element.type === "text"
+				? {
+						...element,
+						stroke: {
+							...DEFAULTS.text.stroke,
+							...element.stroke,
+							color: value as string,
+						},
+					}
+				: element,
+	},
+	"stroke.width": createNumberPropertyDefinition({
+		numericRange: { min: TEXT_STROKE_WIDTH_MIN, max: TEXT_STROKE_WIDTH_MAX, step: 1 },
+		supportsElement: ({ element }) => element.type === "text",
+		getValue: ({ element }) =>
+			element.type === "text"
+				? (element.stroke?.width ?? DEFAULTS.text.stroke.width)
+				: null,
+		setValue: ({ element, value }) =>
+			element.type === "text"
+				? {
+						...element,
+						stroke: {
+							...DEFAULTS.text.stroke,
+							...element.stroke,
+							width: value as number,
+						},
 					}
 				: element,
 	}),

@@ -1,11 +1,12 @@
 import { CORNER_RADIUS_MIN } from "@/text/background";
 import { DEFAULTS } from "@/timeline/defaults";
-import type { TextBackground, TextElement } from "@/timeline";
+import type { TextBackground, TextElement, TextStroke } from "@/timeline";
 import { resolveNumberAtTime } from "@/animation/values";
 import {
 	getTextVisualRect,
 } from "./layout";
 import {
+	getTextStrokeWidthPx,
 	measureTextLayout,
 	type MeasuredTextLayout,
 } from "./primitives";
@@ -18,8 +19,14 @@ export interface ResolvedTextBackground extends TextBackground {
 	cornerRadius: number;
 }
 
+export interface ResolvedTextStroke extends TextStroke {
+	/** Canvas line width; 0 when the stroke is disabled. */
+	widthPx: number;
+}
+
 export interface MeasuredTextElement extends MeasuredTextLayout {
 	resolvedBackground: ResolvedTextBackground;
+	resolvedStroke: ResolvedTextStroke;
 	visualRect: { left: number; top: number; width: number; height: number };
 }
 
@@ -118,16 +125,36 @@ export function measureTextElement({
 		}),
 	};
 
+	const stroke = { ...DEFAULTS.text.stroke, ...element.stroke };
+	const strokeWidth = resolveNumberAtTime({
+		baseValue: stroke.width,
+		animations: element.animations,
+		propertyPath: "stroke.width",
+		localTime,
+	});
+	const resolvedStroke: ResolvedTextStroke = {
+		...stroke,
+		width: strokeWidth,
+		widthPx: stroke.enabled
+			? getTextStrokeWidthPx({
+					width: strokeWidth,
+					scaledFontSize: measuredLayout.scaledFontSize,
+				})
+			: 0,
+	};
+
 	const visualRect = getTextVisualRect({
 		textAlign: element.textAlign,
 		block: measuredLayout.block,
 		background: resolvedBackground,
 		fontSizeRatio: measuredLayout.fontSizeRatio,
+		strokeWidthPx: resolvedStroke.widthPx,
 	});
 
 	return {
 		...measuredLayout,
 		resolvedBackground,
+		resolvedStroke,
 		visualRect,
 	};
 }
