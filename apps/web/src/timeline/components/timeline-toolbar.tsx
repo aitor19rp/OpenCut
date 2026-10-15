@@ -34,6 +34,7 @@ import {
 	SnowIcon,
 	ScissorIcon,
 	MagnetIcon,
+	CollapseIcon,
 	SearchAddIcon,
 	SearchMinusIcon,
 	Copy01Icon,
@@ -279,6 +280,12 @@ function ToolbarRightSection({
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
+	const magneticMainTrackEnabled = useTimelineStore(
+		(s) => s.magneticMainTrackEnabled,
+	);
+	const toggleMagneticMainTrack = useTimelineStore(
+		(s) => s.toggleMagneticMainTrack,
+	);
 
 	return (
 		<div className="flex items-center gap-1">
@@ -295,6 +302,13 @@ function ToolbarRightSection({
 					isActive={rippleEditingEnabled}
 					tooltip="Ripple editing"
 					onClick={() => toggleRippleEditing()}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={CollapseIcon} />}
+					isActive={magneticMainTrackEnabled}
+					tooltip="Magnetic main track (no gaps)"
+					onClick={() => toggleMagneticMainTrack()}
 				/>
 			</TooltipProvider>
 

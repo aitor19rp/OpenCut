@@ -3,6 +3,7 @@ import type { Command, CommandResult } from "@/commands";
 import type { EditorSelectionSnapshot } from "@/selection/editor-selection";
 import { applyRippleAdjustments, computeRippleAdjustments } from "@/ripple";
 import type { SceneTracks } from "@/timeline/types";
+import { compactMainTrack } from "@/timeline/magnetic-main-track";
 
 interface CommandHistoryEntry {
 	command: Command;
@@ -12,6 +13,8 @@ interface CommandHistoryEntry {
 
 export class CommandManager {
 	public isRippleEnabled = false;
+	/** Keeps main-track clips back to back, without gaps. */
+	public isMagneticMainTrackEnabled = false;
 	private history: CommandHistoryEntry[] = [];
 	private redoStack: CommandHistoryEntry[] = [];
 	private reactors: Array<() => void> = [];
@@ -25,6 +28,7 @@ export class CommandManager {
 		const previousSelection = this.getSelectionSnapshot();
 		const result = command.execute();
 		this.applyRippleIfEnabled({ beforeTracks });
+		this.applyMagneticMainTrackIfEnabled();
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors();
 		this.history.push({
@@ -80,6 +84,7 @@ export class CommandManager {
 		const previousSelection = this.getSelectionSnapshot();
 		const result = entry.command.redo();
 		this.applyRippleIfEnabled({ beforeTracks });
+		this.applyMagneticMainTrackIfEnabled();
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors();
 
@@ -121,6 +126,16 @@ export class CommandManager {
 	private runReactors(): void {
 		for (const reactor of this.reactors) {
 			reactor();
+		}
+	}
+
+	private applyMagneticMainTrackIfEnabled(): void {
+		if (!this.isMagneticMainTrackEnabled) return;
+		const tracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
+		if (!tracks) return;
+		const compacted = compactMainTrack({ tracks });
+		if (compacted) {
+			this.editor.timeline.updateTracks(compacted);
 		}
 	}
 

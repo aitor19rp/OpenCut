@@ -11,6 +11,8 @@ interface TimelineStore {
 	toggleSnapping: () => void;
 	rippleEditingEnabled: boolean;
 	toggleRippleEditing: () => void;
+	magneticMainTrackEnabled: boolean;
+	toggleMagneticMainTrack: () => void;
 	expandedElementIds: Set<string>;
 	toggleElementExpanded: (elementId: string) => void;
 	/** Elements currently being trimmed; not persisted. */
@@ -32,6 +34,14 @@ export const useTimelineStore = create<TimelineStore>()(
 			toggleRippleEditing: () => {
 				set((state) => ({
 					rippleEditingEnabled: !state.rippleEditingEnabled,
+				}));
+			},
+
+			magneticMainTrackEnabled: true,
+
+			toggleMagneticMainTrack: () => {
+				set((state) => ({
+					magneticMainTrackEnabled: !state.magneticMainTrackEnabled,
 				}));
 			},
 
@@ -60,6 +70,7 @@ export const useTimelineStore = create<TimelineStore>()(
 			partialize: (state) => ({
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
+				magneticMainTrackEnabled: state.magneticMainTrackEnabled,
 			}),
 		},
 	),

@@ -137,6 +137,13 @@ function EditorRuntimeBindings() {
 		editor.command.isRippleEnabled = rippleEditingEnabled;
 	}, [editor, rippleEditingEnabled]);
 
+	const magneticMainTrackEnabled = useTimelineStore(
+		(state) => state.magneticMainTrackEnabled,
+	);
+	useEffect(() => {
+		editor.command.isMagneticMainTrackEnabled = magneticMainTrackEnabled;
+	}, [editor, magneticMainTrackEnabled]);
+
 	useEffect(() => {
 		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 			if (!editor.save.getIsDirty()) return;
