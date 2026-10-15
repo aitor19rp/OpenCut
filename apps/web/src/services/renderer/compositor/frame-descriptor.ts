@@ -239,6 +239,11 @@ async function collectVisualSourceNode({
 			? DEFAULT_GRAPHIC_SOURCE_SIZE
 			: (node.resolved as ResolvedVisualSourceNodeState).sourceHeight;
 
+	const sourceVersion =
+		node instanceof GraphicNode
+			? undefined
+			: (node.resolved as ResolvedVisualSourceNodeState).sourceVersion;
+
 	const textureId = `${path}:source`;
 	textures.set(textureId, {
 		kind: "external",
@@ -246,6 +251,7 @@ async function collectVisualSourceNode({
 		source,
 		width: sourceWidth,
 		height: sourceHeight,
+		sourceVersion,
 	});
 
 	const transform = computeVisualTransform({

@@ -37,6 +37,7 @@ type ExternalCacheEntry = {
 	source: CanvasImageSource;
 	width: number;
 	height: number;
+	sourceVersion?: number;
 };
 
 class WasmCompositor {
@@ -101,6 +102,7 @@ class WasmCompositor {
 		if (
 			previous?.kind === "external" &&
 			previous.source === texture.source &&
+			previous.sourceVersion === texture.sourceVersion &&
 			previous.width === texture.width &&
 			previous.height === texture.height
 		) {
@@ -129,6 +131,7 @@ class WasmCompositor {
 			source: texture.source,
 			width: texture.width,
 			height: texture.height,
+			sourceVersion: texture.sourceVersion,
 		});
 	}
 

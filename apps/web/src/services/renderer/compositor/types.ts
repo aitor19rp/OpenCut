@@ -56,6 +56,11 @@ export type ExternalTextureDescriptor = {
 	source: CanvasImageSource;
 	width: number;
 	height: number;
+	/**
+	 * Changes when the same source object holds new pixels, e.g. pooled video
+	 * frame canvases reused by the decoder. Undefined means identity is enough.
+	 */
+	sourceVersion?: number;
 };
 
 /**

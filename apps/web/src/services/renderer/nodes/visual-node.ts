@@ -29,6 +29,8 @@ export interface ResolvedVisualSourceNodeState extends ResolvedVisualNodeState {
 	source: CanvasImageSource;
 	sourceWidth: number;
 	sourceHeight: number;
+	/** See ExternalTextureDescriptor.sourceVersion. */
+	sourceVersion?: number;
 }
 
 export abstract class VisualNode<

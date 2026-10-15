@@ -226,6 +226,9 @@ async function resolveVideoNode({
 		source: frame.canvas,
 		sourceWidth: frame.canvas.width,
 		sourceHeight: frame.canvas.height,
+		// The decoder reuses a small pool of canvases, so identity alone
+		// doesn't tell the compositor the pixels changed.
+		sourceVersion: frame.timestamp,
 	};
 }
 
