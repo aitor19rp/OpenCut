@@ -5,6 +5,7 @@ import { FontPicker } from "@/components/ui/font-picker";
 import type { TextElement } from "@/timeline";
 import { NumberField } from "@/components/ui/number-field";
 import { useRef } from "react";
+import { EmojiPickerButton } from "./emoji-picker";
 import {
 	Section,
 	SectionContent,
@@ -71,6 +72,8 @@ function ContentSection({
 	trackId: string;
 }) {
 	const editor = useEditor();
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const insertPositionRef = useRef<number | null>(null);
 
 	const content = usePropertyDraft({
 		displayValue: element.content,
@@ -84,13 +87,42 @@ function ContentSection({
 		onCommit: () => editor.timeline.commitPreview(),
 	});
 
+	const rememberCaret = () => {
+		insertPositionRef.current =
+			textareaRef.current?.selectionEnd ?? element.content.length;
+	};
+
+	const insertEmoji = ({ emoji }: { emoji: string }) => {
+		const position = Math.min(
+			insertPositionRef.current ?? element.content.length,
+			element.content.length,
+		);
+		const nextContent =
+			element.content.slice(0, position) + emoji + element.content.slice(position);
+		insertPositionRef.current = position + emoji.length;
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId,
+					elementId: element.id,
+					patch: { content: nextContent },
+				},
+			],
+		});
+	};
+
 	return (
 		<Section collapsible sectionKey={`${element.id}:content`}>
-			<SectionHeader>
+			<SectionHeader
+				trailing={
+					<EmojiPickerButton onOpen={rememberCaret} onSelect={insertEmoji} />
+				}
+			>
 				<SectionTitle>Content</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
 				<Textarea
+					ref={textareaRef}
 					placeholder="Name"
 					value={content.displayValue}
 					className="min-h-20"
