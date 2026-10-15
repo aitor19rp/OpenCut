@@ -16,26 +16,6 @@ interface SafeZoneTemplate {
 
 export const SAFE_ZONE_TEMPLATES = {
 	/**
-	 * Measured on a YouTube Shorts template image, relative to the video frame
-	 * drawn on it. The lower right is cut out for the like/comment/share column.
-	 */
-	shorts: {
-		overlay: {
-			id: "shorts-safe-zone",
-			label: "Safe zone (YouTube Shorts)",
-			defaultVisible: false,
-		},
-		frame: { left: 33, top: 44, width: 251, height: 490 },
-		safeOutline: [
-			{ x: 38, y: 83 },
-			{ x: 279, y: 83 },
-			{ x: 279, y: 224 },
-			{ x: 242, y: 224 },
-			{ x: 242, y: 475 },
-			{ x: 38, y: 475 },
-		],
-	},
-	/**
 	 * Instagram boosted Reels spec on 1080×1920: about 1010×1280, 220 px from
 	 * the top and 420 px from the bottom (35 px side margins).
 	 */
