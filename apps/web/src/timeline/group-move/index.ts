@@ -1,5 +1,5 @@
 export { buildMoveGroup } from "./build-group";
-export { resolveGroupMove } from "./resolve-move";
+export { clampTextGroupAnchorTime, resolveGroupMove } from "./resolve-move";
 export { snapGroupEdges } from "./snap";
 
 export type {

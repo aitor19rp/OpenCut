@@ -340,6 +340,65 @@ function findCompatibleTrackPlacement({
 	return null;
 }
 
+/**
+ * While moving texts (and nothing on the main track), stops the group from
+ * going past the end of the last main-track clip.
+ */
+function clampTextMembersToMainEnd({
+	group,
+	tracks,
+	anchorStartTime,
+	minimumAnchorStartTime,
+}: {
+	group: MoveGroup;
+	tracks: SceneTracks;
+	anchorStartTime: MediaTime;
+	minimumAnchorStartTime: MediaTime;
+}): MediaTime {
+	const mainEnd = tracks.main.elements.reduce(
+		(end, element) => Math.max(end, element.startTime + element.duration),
+		0,
+	);
+	if (mainEnd <= 0) return anchorStartTime;
+
+	let maximumAnchorStartTime = Number.POSITIVE_INFINITY;
+	for (const member of group.members) {
+		if (member.elementType !== "text") continue;
+		maximumAnchorStartTime = Math.min(
+			maximumAnchorStartTime,
+			mainEnd - member.timeOffset - member.duration,
+		);
+	}
+	if (!Number.isFinite(maximumAnchorStartTime)) return anchorStartTime;
+
+	const limit = Math.max(minimumAnchorStartTime, maximumAnchorStartTime);
+	return anchorStartTime > limit ? (limit as MediaTime) : anchorStartTime;
+}
+
+/**
+ * Drag-preview version: keeps a group of texts (none on the main track)
+ * from being dragged past the end of the last main-track clip.
+ */
+export function clampTextGroupAnchorTime({
+	group,
+	tracks,
+	anchorStartTime,
+}: {
+	group: MoveGroup;
+	tracks: SceneTracks;
+	anchorStartTime: MediaTime;
+}): MediaTime {
+	if (group.members.some((member) => member.trackSection === "main")) {
+		return anchorStartTime;
+	}
+	return clampTextMembersToMainEnd({
+		group,
+		tracks,
+		anchorStartTime,
+		minimumAnchorStartTime: ZERO_MEDIA_TIME,
+	});
+}
+
 function clampAnchorStartTime({
 	group,
 	tracks,
@@ -374,7 +433,7 @@ function clampAnchorStartTime({
 			targetTrackIdsByElementId.get(member.elementId) === tracks.main.id,
 	);
 	if (!memberOnMainTrack) {
-		return clampedAnchorStartTime;
+		return clampTextMembersToMainEnd({ group, tracks, anchorStartTime: clampedAnchorStartTime, minimumAnchorStartTime });
 	}
 
 	const movingElementIds = new Set(

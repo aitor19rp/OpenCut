@@ -3,7 +3,10 @@ import type { Command, CommandResult } from "@/commands";
 import type { EditorSelectionSnapshot } from "@/selection/editor-selection";
 import { applyRippleAdjustments, computeRippleAdjustments } from "@/ripple";
 import type { SceneTracks } from "@/timeline/types";
-import { compactMainTrack } from "@/timeline/magnetic-main-track";
+import {
+	clampTextsToMainTrackEnd,
+	compactMainTrack,
+} from "@/timeline/magnetic-main-track";
 
 interface CommandHistoryEntry {
 	command: Command;
@@ -29,6 +32,7 @@ export class CommandManager {
 		const result = command.execute();
 		this.applyRippleIfEnabled({ beforeTracks });
 		this.applyMagneticMainTrackIfEnabled();
+		this.clampTextsToMainEnd();
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors();
 		this.history.push({
@@ -85,6 +89,7 @@ export class CommandManager {
 		const result = entry.command.redo();
 		this.applyRippleIfEnabled({ beforeTracks });
 		this.applyMagneticMainTrackIfEnabled();
+		this.clampTextsToMainEnd();
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors();
 
@@ -126,6 +131,16 @@ export class CommandManager {
 	private runReactors(): void {
 		for (const reactor of this.reactors) {
 			reactor();
+		}
+	}
+
+	/** Texts never run past the last main-track clip, whatever the edit was. */
+	private clampTextsToMainEnd(): void {
+		const tracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
+		if (!tracks) return;
+		const clamped = clampTextsToMainTrackEnd({ tracks });
+		if (clamped) {
+			this.editor.timeline.updateTracks(clamped);
 		}
 	}
 

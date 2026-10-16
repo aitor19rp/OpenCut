@@ -1,6 +1,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
 	buildMoveGroup,
+	clampTextGroupAnchorTime,
 	resolveGroupMove,
 	snapGroupEdges,
 	type GroupMoveResult,
@@ -572,10 +573,15 @@ export class ElementInteractionController {
 			clickOffsetTime: mousedown.clickOffsetTime,
 			fps,
 		});
-		const { snappedTime, snapPoint } = this.snapResult(
+		const { snappedTime: unclampedTime, snapPoint } = this.snapResult(
 			frameSnappedTime,
 			moveGroup,
 		);
+		const snappedTime = clampTextGroupAnchorTime({
+			group: moveGroup,
+			tracks: this.deps.scene.getTracks(),
+			anchorStartTime: unclampedTime,
+		});
 
 		// Ensure the anchor is selected before we render the drag — covers the
 		// case where the selection store hasn't committed the mousedown-time
@@ -636,10 +642,15 @@ export class ElementInteractionController {
 			clickOffsetTime: mousedown.clickOffsetTime,
 			fps,
 		});
-		const { snappedTime, snapPoint } = this.snapResult(
+		const { snappedTime: unclampedTime, snapPoint } = this.snapResult(
 			frameSnappedTime,
 			drag.moveGroup,
 		);
+		const snappedTime = clampTextGroupAnchorTime({
+			group: drag.moveGroup,
+			tracks: this.deps.scene.getTracks(),
+			anchorStartTime: unclampedTime,
+		});
 
 		drag.currentTime = snappedTime;
 		drag.currentMouseX = clientX;

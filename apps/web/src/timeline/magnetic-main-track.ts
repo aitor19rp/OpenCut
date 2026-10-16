@@ -166,3 +166,46 @@ export function applyFollowingTexts({
 		})),
 	} as SceneTracks;
 }
+
+/**
+ * Keeps every text from running past the end of the last main-track clip:
+ * a text that overshoots is shortened, and one that starts after the end is
+ * moved back so it ends there. Does nothing while the main track is empty.
+ * Returns null when nothing had to change.
+ */
+export function clampTextsToMainTrackEnd({
+	tracks,
+}: {
+	tracks: SceneTracks;
+}): SceneTracks | null {
+	const mainEnd = tracks.main.elements.reduce(
+		(end, element) => Math.max(end, element.startTime + element.duration),
+		0,
+	);
+	if (mainEnd <= 0) return null;
+
+	let changed = false;
+	const overlay = tracks.overlay.map((track) => ({
+		...track,
+		elements: track.elements.map((element) => {
+			if (element.type !== "text") return element;
+			const end = element.startTime + element.duration;
+			if (end <= mainEnd) return element;
+			changed = true;
+			const minimumLength = 1;
+			if (element.startTime + minimumLength < mainEnd) {
+				return {
+					...element,
+					duration: mediaTime({ ticks: mainEnd - element.startTime }),
+				};
+			}
+			const duration = Math.min(element.duration, mainEnd);
+			return {
+				...element,
+				startTime: mediaTime({ ticks: mainEnd - duration }),
+				duration: mediaTime({ ticks: duration }),
+			};
+		}),
+	}));
+	return changed ? ({ ...tracks, overlay } as SceneTracks) : null;
+}
