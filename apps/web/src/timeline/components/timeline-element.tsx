@@ -1361,37 +1361,54 @@ function FadeMarkers({
 					timelineTimeToPixels({ time: (time * scale) as MediaTime, zoomLevel }),
 				)
 			: 0;
-	const inWidth = toWidth(fadeIn);
-	const outWidth = toWidth(fadeOut);
+	const MIN_VISIBLE_WIDTH = 14;
+	const inWidth = fadeIn ? Math.max(MIN_VISIBLE_WIDTH, toWidth(fadeIn)) : 0;
+	const outWidth = fadeOut ? Math.max(MIN_VISIBLE_WIDTH, toWidth(fadeOut)) : 0;
 
 	return (
-		<div
+		<svg
 			className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden rounded-[inherit]"
-			style={{ height: `${height}px` }}
+			width={elementWidth}
+			height={height}
+			viewBox={`0 0 ${elementWidth} ${height}`}
 			aria-hidden="true"
 		>
 			{inWidth > 0 && (
-				<div
-					className="absolute inset-y-0 left-0"
-					style={{
-						width: `${inWidth}px`,
-						background:
-							"linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0))",
-						clipPath: "polygon(0 0, 100% 0, 0 100%)",
-					}}
-				/>
+				<g>
+					<polygon
+						points={`0,0 ${inWidth},0 0,${height}`}
+						fill="rgba(0,0,0,0.5)"
+					/>
+					<line
+						x1={0}
+						y1={height}
+						x2={inWidth}
+						y2={0}
+						stroke="white"
+						strokeWidth={1.5}
+						strokeLinecap="round"
+						style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.9))" }}
+					/>
+				</g>
 			)}
 			{outWidth > 0 && (
-				<div
-					className="absolute inset-y-0 right-0"
-					style={{
-						width: `${outWidth}px`,
-						background:
-							"linear-gradient(to left, rgba(0,0,0,0.6), rgba(0,0,0,0))",
-						clipPath: "polygon(100% 0, 0 0, 100% 100%)",
-					}}
-				/>
+				<g>
+					<polygon
+						points={`${elementWidth},0 ${elementWidth - outWidth},0 ${elementWidth},${height}`}
+						fill="rgba(0,0,0,0.5)"
+					/>
+					<line
+						x1={elementWidth - outWidth}
+						y1={0}
+						x2={elementWidth}
+						y2={height}
+						stroke="white"
+						strokeWidth={1.5}
+						strokeLinecap="round"
+						style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.9))" }}
+					/>
+				</g>
 			)}
-		</div>
+		</svg>
 	);
 }
