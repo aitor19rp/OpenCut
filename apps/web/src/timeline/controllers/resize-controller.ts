@@ -96,6 +96,14 @@ export function buildResizeMembers({
 	const selectedElementIds = new Set(
 		selectedElements.map((el) => el.elementId),
 	);
+	// Texts can't run past the end of the video (the last main-track clip).
+	const mainTrackEnd = tracks.main.elements.reduce<MediaTime | null>(
+		(end, el) => {
+			const elementEnd = addMediaTime({ a: el.startTime, b: el.duration });
+			return end === null ? elementEnd : maxMediaTime({ a: end, b: elementEnd });
+		},
+		null,
+	);
 	const trackMap = new Map(
 		[...tracks.overlay, tracks.main, ...tracks.audio].map((track) => [
 			track.id,
@@ -152,7 +160,13 @@ export function buildResizeMembers({
 				leftNeighborBound:
 					trackId === unboundedTrackId ? UNBOUNDED_LEFT : leftNeighborBound,
 				rightNeighborBound:
-					trackId === unboundedTrackId ? null : rightNeighborBound,
+					trackId === unboundedTrackId
+						? null
+						: element.type === "text" && mainTrackEnd !== null
+							? rightNeighborBound === null
+								? mainTrackEnd
+								: minMediaTime({ a: rightNeighborBound, b: mainTrackEnd })
+							: rightNeighborBound,
 			},
 		];
 	});

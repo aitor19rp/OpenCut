@@ -102,7 +102,9 @@ export function getFollowingTextUpdates({
 	mainAfter: readonly TimelineElement[];
 }): Array<{ trackId: string; element: TimelineElement; startTime: MediaTime; duration: MediaTime }> {
 	const before = toSpans(mainBefore);
-	const afterById = new Map(toSpans(mainAfter).map((span) => [span.id, span]));
+	const afterSpans = toSpans(mainAfter);
+	const afterById = new Map(afterSpans.map((span) => [span.id, span]));
+	const mainEnd = afterSpans.reduce((end, span) => Math.max(end, span.end), 0);
 	const updates: Array<{
 		trackId: string;
 		element: TimelineElement;
@@ -114,11 +116,13 @@ export function getFollowingTextUpdates({
 		for (const element of track.elements) {
 			if (element.type !== "text") continue;
 			const start = remapTime({ time: element.startTime, before, afterById });
-			const end = remapTime({
+			const remappedEnd = remapTime({
 				time: element.startTime + element.duration,
 				before,
 				afterById,
 			});
+			// Never let a text run past the end of the last clip.
+			const end = afterSpans.length > 0 ? Math.min(remappedEnd, mainEnd) : remappedEnd;
 			if (end <= start) continue;
 			if (start === element.startTime && end - start === element.duration) {
 				continue;
