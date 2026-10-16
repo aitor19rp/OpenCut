@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { TranslateIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { distributeIntoLines, splitParagraphs } from "@/text/translate-layout";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -171,12 +172,21 @@ export function TranslateButton({
 				promise: factory.create(options),
 				ms: TRANSLATOR_SETUP_TIMEOUT_MS,
 			});
-			// Translate line by line so the text keeps its line breaks.
-			const lines = await Promise.all(
-				text
-					.split("\n")
-					.map((line) => (line.trim() ? translator.translate(line) : line)),
+			// Translate whole paragraphs, not single lines: a sentence broken
+			// over two lines needs its context, then restore the line layout.
+			const paragraphs = splitParagraphs({ text });
+			const translatedParagraphs = await Promise.all(
+				paragraphs.map(async (lines) => {
+					if (lines.length === 1 && !lines[0].trim()) return lines;
+					const joined = lines.map((line) => line.trim()).join(" ");
+					const translated = await translator.translate(joined);
+					return distributeIntoLines({
+						translated,
+						originalLines: lines,
+					});
+				}),
 			);
+			const lines = translatedParagraphs.flat();
 			translator.destroy?.();
 			onTranslated({ text: lines.join("\n") });
 		} catch (error) {
