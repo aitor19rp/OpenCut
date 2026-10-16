@@ -137,3 +137,37 @@ export async function removeCustomFont({
 	registeredFamilies.delete(family);
 	notify();
 }
+
+const DEFAULT_FONT_STORAGE_KEY = "opencut-default-text-font";
+
+function readDefaultFontPreference(): string | null {
+	try {
+		return localStorage.getItem(DEFAULT_FONT_STORAGE_KEY);
+	} catch {
+		return null;
+	}
+}
+
+/** The uploaded font chosen as default for new texts, if it's still available. */
+export function getPreferredTextFont(): string | null {
+	const family = readDefaultFontPreference();
+	return family && registeredFamilies.has(family) ? family : null;
+}
+
+export function setPreferredTextFont({
+	family,
+}: {
+	family: string | null;
+}): void {
+	try {
+		if (family) localStorage.setItem(DEFAULT_FONT_STORAGE_KEY, family);
+		else localStorage.removeItem(DEFAULT_FONT_STORAGE_KEY);
+	} catch {
+		// Storage unavailable: the choice just won't persist.
+	}
+	notify();
+}
+
+export function getPreferredTextFontSnapshot(): string | null {
+	return getPreferredTextFont();
+}

@@ -1,3 +1,4 @@
+import { getPreferredTextFont } from "@/fonts/custom-fonts";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/timeline/creation";
 import {
 	MASKABLE_ELEMENT_TYPES,
@@ -121,7 +122,7 @@ export function buildTextElement({
 		trimStart: ZERO_MEDIA_TIME,
 		trimEnd: ZERO_MEDIA_TIME,
 		fontSize: t.fontSize ?? DEFAULTS.text.element.fontSize,
-		fontFamily: t.fontFamily ?? DEFAULTS.text.element.fontFamily,
+		fontFamily: t.fontFamily ?? getPreferredTextFont() ?? DEFAULTS.text.element.fontFamily,
 		color: t.color ?? DEFAULTS.text.element.color,
 		// Text with no style info (e.g. dragged in from the assets panel) gets
 		// the default text's look rather than a stray black background.

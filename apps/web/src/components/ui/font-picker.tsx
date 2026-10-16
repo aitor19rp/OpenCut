@@ -24,7 +24,12 @@ import { useFontAtlas } from "@/fonts/use-font-atlas";
 import { cn } from "@/utils/ui";
 import { ChevronDown, Search } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon, TextIcon, Upload04Icon } from "@hugeicons/core-free-icons";
+import {
+	Delete02Icon,
+	StarIcon,
+	TextIcon,
+	Upload04Icon,
+} from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import {
 	addCustomFontFromFile,
@@ -33,6 +38,8 @@ import {
 	isCustomFont,
 	loadCustomFonts,
 	removeCustomFont,
+	getPreferredTextFontSnapshot,
+	setPreferredTextFont,
 	subscribeCustomFonts,
 } from "@/fonts/custom-fonts";
 
@@ -229,6 +236,11 @@ function MyFontsTab({
 		getCustomFontFamilies,
 		getCustomFontFamilies,
 	);
+	const defaultFont = useSyncExternalStore(
+		subscribeCustomFonts,
+		getPreferredTextFontSnapshot,
+		() => null,
+	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isUploading, setIsUploading] = useState(false);
 
@@ -308,6 +320,27 @@ function MyFontsTab({
 							>
 								{family}
 							</button>
+							<Button
+								variant="ghost"
+								size="icon"
+								title={
+									family === defaultFont
+										? "Fuente por defecto (pulsa para quitar)"
+										: "Usar por defecto en textos nuevos"
+								}
+								className={cn(
+									family === defaultFont
+										? "text-amber-500"
+										: "opacity-0 group-hover:opacity-100",
+								)}
+								onClick={() =>
+									setPreferredTextFont({
+										family: family === defaultFont ? null : family,
+									})
+								}
+							>
+								<HugeiconsIcon icon={StarIcon} />
+							</Button>
 							<Button
 								variant="ghost"
 								size="icon"
