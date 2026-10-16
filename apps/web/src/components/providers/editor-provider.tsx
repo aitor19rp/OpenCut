@@ -10,6 +10,7 @@ import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { useEditorActions } from "@/actions/use-editor-actions";
 import { loadFontAtlas, loadFullFont } from "@/fonts/google-fonts";
+import { loadCustomFonts } from "@/fonts/custom-fonts";
 import { DEFAULT_TEXT_FONT_FAMILY } from "@/timeline/defaults";
 import {
 	initializeGpuRenderer,
@@ -49,6 +50,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 				loadFontAtlas();
 				// Preload so new texts render with the default font right away.
 				void loadFullFont({ family: DEFAULT_TEXT_FONT_FAMILY });
+				void loadCustomFonts();
 			} catch (err) {
 				if (cancelled) return;
 

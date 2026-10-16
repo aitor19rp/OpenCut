@@ -1,5 +1,6 @@
 import type { FontAtlas } from "@/fonts/types";
 import { SYSTEM_FONTS } from "@/fonts/system-fonts";
+import { isCustomFont, loadCustomFonts } from "@/fonts/custom-fonts";
 
 const GOOGLE_FONTS_CSS = "https://fonts.googleapis.com/css2";
 const FONT_ATLAS_PATH = "/fonts/font-atlas.json";
@@ -83,6 +84,10 @@ export async function loadFonts({
 }: {
 	families: string[];
 }): Promise<void> {
-	const googleFonts = families.filter((family) => !SYSTEM_FONTS.has(family));
+	// User-uploaded fonts come from IndexedDB, not Google Fonts.
+	await loadCustomFonts();
+	const googleFonts = families.filter(
+		(family) => !SYSTEM_FONTS.has(family) && !isCustomFont(family),
+	);
 	await Promise.all(googleFonts.map((family) => loadFullFont({ family })));
 }
