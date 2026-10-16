@@ -406,6 +406,14 @@ export function TimelineElement({
 							onResizeStart={onResizeStart}
 							isDropTarget={isDropTarget}
 						/>
+						<FadeMarkers
+							fadeIn={renderElement.fadeIn}
+							fadeOut={renderElement.fadeOut}
+							duration={displayedDuration}
+							elementWidth={elementWidth}
+							zoomLevel={zoomLevel}
+							height={baseTrackHeight}
+						/>
 						{isBeingResized && (
 							<div
 								className="pointer-events-none absolute top-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[10px] text-white tabular-nums"
@@ -1320,4 +1328,70 @@ function formatClipDuration({ duration }: { duration: MediaTime }): string {
 		minimumFractionDigits: 1,
 		maximumFractionDigits: 1,
 	})} s`;
+}
+
+/**
+ * Subtle dark ramps at a clip's edges showing its fade-in / fade-out, drawn
+ * under the clip's label and handles so they don't get in the way.
+ */
+function FadeMarkers({
+	fadeIn,
+	fadeOut,
+	duration,
+	elementWidth,
+	zoomLevel,
+	height,
+}: {
+	fadeIn?: MediaTime;
+	fadeOut?: MediaTime;
+	duration: MediaTime;
+	elementWidth: number;
+	zoomLevel: number;
+	height: number;
+}) {
+	if (!fadeIn && !fadeOut) return null;
+
+	// Same rule as the renderer: the two fades never overlap.
+	const total = (fadeIn ?? 0) + (fadeOut ?? 0);
+	const scale = total > duration && total > 0 ? duration / total : 1;
+	const toWidth = (time?: MediaTime) =>
+		time
+			? Math.min(
+					elementWidth,
+					timelineTimeToPixels({ time: (time * scale) as MediaTime, zoomLevel }),
+				)
+			: 0;
+	const inWidth = toWidth(fadeIn);
+	const outWidth = toWidth(fadeOut);
+
+	return (
+		<div
+			className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden rounded-[inherit]"
+			style={{ height: `${height}px` }}
+			aria-hidden="true"
+		>
+			{inWidth > 0 && (
+				<div
+					className="absolute inset-y-0 left-0"
+					style={{
+						width: `${inWidth}px`,
+						background:
+							"linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+						clipPath: "polygon(0 0, 100% 0, 0 100%)",
+					}}
+				/>
+			)}
+			{outWidth > 0 && (
+				<div
+					className="absolute inset-y-0 right-0"
+					style={{
+						width: `${outWidth}px`,
+						background:
+							"linear-gradient(to left, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+						clipPath: "polygon(100% 0, 0 0, 100% 100%)",
+					}}
+				/>
+			)}
+		</div>
+	);
 }

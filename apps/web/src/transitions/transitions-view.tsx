@@ -72,10 +72,77 @@ function findPreviousAdjacent({
 	return best;
 }
 
+interface FadeState {
+	activePreset: FadePreset | null;
+	/** Longest fade-in / fade-out among the selected clips, in seconds. */
+	fadeInSeconds: number;
+	fadeOutSeconds: number;
+}
+
+function getFadeState({
+	tracks,
+	selectedElements,
+}: {
+	tracks: TimelineTrack[];
+	selectedElements: Array<{ trackId: string; elementId: string }>;
+}): FadeState {
+	let allHaveIn = true;
+	let allHaveOut = true;
+	let allDip = true;
+	let count = 0;
+	let fadeIn = 0;
+	let fadeOut = 0;
+
+	for (const ref of selectedElements) {
+		const track = tracks.find((candidate) => candidate.id === ref.trackId);
+		const element = track?.elements.find((el) => el.id === ref.elementId);
+		if (!track || !element || !FADEABLE_TYPES.has(element.type)) continue;
+		count += 1;
+		const inLength = element.fadeIn ?? 0;
+		const outLength = element.fadeOut ?? 0;
+		fadeIn = Math.max(fadeIn, inLength);
+		fadeOut = Math.max(fadeOut, outLength);
+		if (inLength <= 0) allHaveIn = false;
+		if (outLength <= 0) allHaveOut = false;
+		const previous = findPreviousAdjacent({ track, element });
+		if (inLength <= 0 || !previous || (previous.fadeOut ?? 0) <= 0) {
+			allDip = false;
+		}
+	}
+
+	let activePreset: FadePreset | null = null;
+	if (count > 0) {
+		if (allHaveIn && allHaveOut) activePreset = "fade-in-out";
+		else if (allDip) activePreset = "dip-between";
+		else if (allHaveIn) activePreset = "fade-in";
+		else if (allHaveOut) activePreset = "fade-out";
+	}
+	return {
+		activePreset,
+		fadeInSeconds: fadeIn / TICKS_PER_SECOND,
+		fadeOutSeconds: fadeOut / TICKS_PER_SECOND,
+	};
+}
+
+function formatSeconds({ seconds }: { seconds: number }): string {
+	return `${Number(seconds.toFixed(1))} s`;
+}
+
 export function TransitionsView() {
 	const editor = useEditor();
 	const { selectedElements } = useElementSelection();
+	const sceneTracks = useEditor((e) => e.scenes.getActiveSceneOrNull()?.tracks);
 	const [seconds, setSeconds] = useState<number>(0.5);
+	const fadeState = sceneTracks
+		? getFadeState({
+				tracks: [
+					...sceneTracks.overlay,
+					sceneTracks.main,
+					...sceneTracks.audio,
+				],
+				selectedElements,
+			})
+		: null;
 
 	const apply = ({ preset }: { preset: FadePreset }) => {
 		const scene = editor.scenes.getActiveScene();
@@ -174,11 +241,33 @@ export function TransitionsView() {
 						? "Selecciona uno o varios clips y elige un fundido."
 						: `Se aplica a ${selectedElements.length} clip(s) seleccionado(s).`}
 				</p>
+				{fadeState && selectedElements.length > 0 && (
+					<p className="text-xs">
+						<span className="text-muted-foreground">Actual: </span>
+						{fadeState.fadeInSeconds > 0 || fadeState.fadeOutSeconds > 0
+							? [
+									fadeState.fadeInSeconds > 0
+										? `entrada ${formatSeconds({ seconds: fadeState.fadeInSeconds })}`
+										: null,
+									fadeState.fadeOutSeconds > 0
+										? `salida ${formatSeconds({ seconds: fadeState.fadeOutSeconds })}`
+										: null,
+								]
+									.filter(Boolean)
+									.join(" · ")
+							: "sin fundidos"}
+					</p>
+				)}
 				{PRESETS.map((preset) => (
 					<button
 						key={preset.id}
 						type="button"
-						className="hover:bg-accent flex items-center gap-3 rounded-md border p-2 text-left"
+						aria-pressed={fadeState?.activePreset === preset.id}
+						className={cn(
+							"hover:bg-accent flex items-center gap-3 rounded-md border p-2 text-left",
+							fadeState?.activePreset === preset.id &&
+								"border-primary bg-primary/10 ring-primary ring-1",
+						)}
 						onClick={() => apply({ preset: preset.id })}
 					>
 						<div
@@ -186,7 +275,14 @@ export function TransitionsView() {
 							style={{ background: preset.gradient }}
 						/>
 						<div className="min-w-0">
-							<div className="text-sm font-medium">{preset.label}</div>
+							<div className="flex items-center gap-1.5 text-sm font-medium">
+								{preset.label}
+								{fadeState?.activePreset === preset.id && (
+									<span className="text-primary text-[10px] font-normal">
+										● activo
+									</span>
+								)}
+							</div>
 							<div className="text-muted-foreground text-xs">
 								{preset.description}
 							</div>
