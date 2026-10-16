@@ -18,6 +18,7 @@ import {
 } from "@/text/measure-element";
 import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
 import { DEFAULTS } from "@/timeline/defaults";
+import { getFadeFactor } from "@/timeline/fade";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import { videoCache } from "@/services/video-cache/service";
 import type { CanvasRenderer } from "./canvas-renderer";
@@ -154,11 +155,18 @@ function resolveVisualState({
 		animations: params.animations,
 		localTime,
 	});
-	const opacity = resolveOpacityAtTime({
-		baseOpacity: params.opacity,
-		animations: params.animations,
-		localTime,
-	});
+	const opacity =
+		resolveOpacityAtTime({
+			baseOpacity: params.opacity,
+			animations: params.animations,
+			localTime,
+		}) *
+		getFadeFactor({
+			clipTime,
+			duration: params.duration,
+			fadeIn: params.fadeIn,
+			fadeOut: params.fadeOut,
+		});
 	const containScale = Math.min(
 		context.renderer.width / sourceWidth,
 		context.renderer.height / sourceHeight,
@@ -341,11 +349,18 @@ function resolveTextNode({
 			animations: node.params.animations,
 			localTime,
 		}),
-		opacity: resolveOpacityAtTime({
-			baseOpacity: node.params.opacity,
-			animations: node.params.animations,
-			localTime,
-		}),
+		opacity:
+			resolveOpacityAtTime({
+				baseOpacity: node.params.opacity,
+				animations: node.params.animations,
+				localTime,
+			}) *
+			getFadeFactor({
+				clipTime: context.time - node.params.startTime,
+				duration: node.params.duration,
+				fadeIn: node.params.fadeIn,
+				fadeOut: node.params.fadeOut,
+			}),
 		textColor: resolveColorAtTime({
 			baseColor: node.params.color,
 			animations: node.params.animations,

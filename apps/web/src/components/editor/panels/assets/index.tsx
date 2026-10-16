@@ -1,5 +1,6 @@
 "use client";
 
+import { TransitionsView } from "@/transitions/transitions-view";
 import { Separator } from "@/components/ui/separator";
 import { type Tab, useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { TabBar } from "./tabbar";
@@ -20,11 +21,7 @@ export function AssetsPanel() {
 		text: <TextView />,
 		stickers: <StickersView />,
 		effects: <EffectsView />,
-		transitions: (
-			<div className="text-muted-foreground p-4">
-				Transitions view coming soon...
-			</div>
-		),
+		transitions: <TransitionsView />,
 		captions: <Captions />,
 		adjustment: (
 			<div className="text-muted-foreground p-4">

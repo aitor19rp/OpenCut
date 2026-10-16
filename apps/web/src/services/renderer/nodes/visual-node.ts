@@ -13,6 +13,8 @@ export interface VisualNodeParams {
 	transform: Transform;
 	animations?: VisualElement["animations"];
 	opacity: number;
+	fadeIn?: number;
+	fadeOut?: number;
 	blendMode?: BlendMode;
 	effects?: Effect[];
 	masks?: Mask[];

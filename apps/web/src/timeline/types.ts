@@ -114,6 +114,10 @@ interface BaseTimelineElement {
 	trimEnd: MediaTime;
 	sourceDuration?: MediaTime;
 	animations?: ElementAnimations;
+	/** Fade from the project background (black by default) at the start. */
+	fadeIn?: MediaTime;
+	/** Fade to the project background (black by default) at the end. */
+	fadeOut?: MediaTime;
 }
 
 export interface VideoElement extends BaseTimelineElement {
