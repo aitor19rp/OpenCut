@@ -1,0 +1,10 @@
+OpenCut en Windows
+==================
+
+OpenCut-iniciar.bat           Abre OpenCut (arranca el servidor si hace falta).
+OpenCut-actualizar.bat        Descarga cambios, recompila y abre OpenCut.
+OpenCut-servidor-inicio.bat   Solo el servidor. Ponle un acceso directo en
+                              shell:startup para que arranque con Windows.
+
+Crear iconos en el Escritorio: clic derecho sobre el .bat ->
+"Mostrar mas opciones" -> Enviar a -> Escritorio (crear acceso directo).
