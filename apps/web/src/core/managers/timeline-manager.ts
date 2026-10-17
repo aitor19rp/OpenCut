@@ -159,9 +159,11 @@ export class TimelineManager {
 	moveElements({
 		moves,
 		createTracks,
+		selection,
 	}: {
 		moves: PlannedElementMove[];
 		createTracks?: PlannedTrackCreation[];
+		selection?: { trackId: string; elementId: string }[];
 	}): void {
 		if (moves.length === 0) {
 			return;
@@ -170,6 +172,7 @@ export class TimelineManager {
 		const command = new MoveElementCommand({
 			moves,
 			createTracks,
+			selection,
 		});
 		this.editor.command.execute({ command });
 	}

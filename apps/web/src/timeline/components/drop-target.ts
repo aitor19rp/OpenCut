@@ -100,6 +100,8 @@ function fallbackNewTrackDropTarget({
 	};
 }
 
+const MAIN_TRACK_DROP_SLACK_PX = 24;
+
 /**
  * With the magnetic main track on, a video or image dragged over the main
  * track goes onto it whatever the gap is: the drop inserts at the nearest cut
@@ -112,14 +114,20 @@ export function computeDropTarget(params: ComputeDropTargetParams): DropTarget {
 	if (elementType !== "video" && elementType !== "image") return target;
 
 	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
-	const hovered = getTrackAtY({
-		mouseY,
-		tracks: orderedTracks,
-		verticalDragDirection: params.verticalDragDirection,
-	});
-	if (!hovered || orderedTracks[hovered.trackIndex]?.id !== tracks.main.id) {
+	// A little slack around the row: the cursor drifts while dragging.
+	const mainTrackIndex = tracks.overlay.length;
+	let mainTop = 0;
+	for (let index = 0; index < mainTrackIndex; index++) {
+		mainTop += getTrackHeight({ type: orderedTracks[index].type }) + TIMELINE_TRACK_GAP_PX;
+	}
+	const mainBottom = mainTop + getTrackHeight({ type: tracks.main.type });
+	if (
+		mouseY < mainTop - MAIN_TRACK_DROP_SLACK_PX ||
+		mouseY > mainBottom + MAIN_TRACK_DROP_SLACK_PX
+	) {
 		return target;
 	}
+	const hovered = { trackIndex: mainTrackIndex };
 	if (!target.isNewTrack && target.trackIndex === hovered.trackIndex) {
 		return target;
 	}

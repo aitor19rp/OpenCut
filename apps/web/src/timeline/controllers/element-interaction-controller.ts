@@ -67,7 +67,11 @@ export interface PlaybackReader {
 }
 
 export interface TimelineOps {
-	moveElements: (args: Pick<GroupMoveResult, "moves" | "createTracks">) => void;
+	moveElements: (
+		args: Pick<GroupMoveResult, "moves" | "createTracks"> & {
+			selection?: ElementRef[];
+		},
+	) => void;
 }
 
 export interface SnapConfig {
@@ -724,6 +728,7 @@ export class ElementInteractionController {
 			this.deps.timeline.moveElements({
 				moves: groupMoveResult.moves,
 				createTracks: groupMoveResult.createTracks,
+				selection: groupMoveResult.targetSelection,
 			});
 		}
 

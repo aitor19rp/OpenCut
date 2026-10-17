@@ -21,15 +21,20 @@ export class MoveElementCommand extends Command {
 	constructor({
 		moves,
 		createTracks = [],
+		selection,
 	}: {
 		moves: PlannedElementMove[];
 		createTracks?: PlannedTrackCreation[];
+		/** Elements to select afterwards; defaults to everything that moved. */
+		selection?: { trackId: string; elementId: string }[];
 	}) {
 		super();
+		this.selection = selection;
 		this.moves = moves;
 		this.createTracks = createTracks;
 	}
 
+	private readonly selection: { trackId: string; elementId: string }[] | undefined;
 	private readonly moves: PlannedElementMove[];
 	private readonly createTracks: PlannedTrackCreation[];
 
@@ -115,10 +120,11 @@ export class MoveElementCommand extends Command {
 
 		editor.timeline.updateTracks(updatedTracks);
 		return createElementSelectionResult(
-			this.moves.map(({ elementId, targetTrackId }) => ({
-				trackId: targetTrackId,
-				elementId,
-			})),
+			this.selection ??
+				this.moves.map(({ elementId, targetTrackId }) => ({
+					trackId: targetTrackId,
+					elementId,
+				})),
 		);
 	}
 
