@@ -1,6 +1,7 @@
 import type { SceneTracks } from "@/timeline";
 import { getTrackTypeForElementType } from "@/timeline/placement/compatibility";
 import { canPlaceTimeSpansOnTrack } from "@/timeline/placement/overlap";
+import { planMainTrackInsertion } from "@/timeline/magnetic-main-track";
 import type {
 	GroupMoveResult,
 	MoveGroup,
@@ -36,11 +37,14 @@ export function resolveGroupMove({
 	tracks,
 	anchorStartTime,
 	target,
+	insertOnMainTrack = false,
 }: {
 	group: MoveGroup;
 	tracks: SceneTracks;
 	anchorStartTime: MediaTime;
 	target: GroupMoveTarget;
+	/** Magnetic main track: dropping onto a clip inserts at the nearest cut. */
+	insertOnMainTrack?: boolean;
 }): GroupMoveResult | null {
 	if (target.kind === "newTracks") {
 		return resolveNewTrackMove({
@@ -57,6 +61,7 @@ export function resolveGroupMove({
 		tracks,
 		anchorStartTime,
 		anchorTargetTrackId: target.anchorTargetTrackId,
+		insertOnMainTrack,
 	});
 }
 
@@ -65,11 +70,13 @@ function resolveExistingTrackMove({
 	tracks,
 	anchorStartTime,
 	anchorTargetTrackId,
+	insertOnMainTrack,
 }: {
 	group: MoveGroup;
 	tracks: SceneTracks;
 	anchorStartTime: MediaTime;
 	anchorTargetTrackId: string;
+	insertOnMainTrack: boolean;
 }): GroupMoveResult | null {
 	const anchorTargetPlacement = getTrackPlacementById({
 		tracks,
@@ -106,6 +113,16 @@ function resolveExistingTrackMove({
 		}),
 	}));
 
+	if (insertOnMainTrack && group.members.length === 1) {
+		const insertion = planMoveIntoMainTrack({
+			group,
+			tracks,
+			moves,
+			anchorStartTime: clampedAnchorStartTime,
+		});
+		if (insertion) return insertion;
+	}
+
 	if (!canApplyMovesToExistingTracks({ tracks, moves })) {
 		return null;
 	}
@@ -117,6 +134,59 @@ function resolveExistingTrackMove({
 			trackId: targetTrackId,
 			elementId,
 		})),
+	};
+}
+
+/**
+ * A single clip dropped on top of main-track clips goes in at the nearest cut
+ * (or the start) and the clips after it make room. Null when it lands in free
+ * space, so the regular move applies.
+ */
+function planMoveIntoMainTrack({
+	group,
+	tracks,
+	moves,
+	anchorStartTime,
+}: {
+	group: MoveGroup;
+	tracks: SceneTracks;
+	moves: PlannedElementMove[];
+	anchorStartTime: MediaTime;
+}): GroupMoveResult | null {
+	const member = group.members[0];
+	const move = moves[0];
+	if (!member || !move || move.targetTrackId !== tracks.main.id) return null;
+	if (member.elementType === "audio") return null;
+
+	const stationaryTracks = {
+		...tracks,
+		main: {
+			...tracks.main,
+			elements: tracks.main.elements.filter(
+				(element) => element.id !== member.elementId,
+			),
+		},
+	} as SceneTracks;
+	const insertion = planMainTrackInsertion({
+		tracks: stationaryTracks,
+		dropStartTime: anchorStartTime,
+		duration: member.duration,
+	});
+	if (!insertion) return null;
+
+	const shifts: PlannedElementMove[] = insertion.updates
+		.filter((update) => update.trackId === tracks.main.id)
+		.map((update) => ({
+			sourceTrackId: update.trackId,
+			targetTrackId: update.trackId,
+			elementId: update.elementId,
+			newStartTime: update.patch.startTime,
+		}));
+	const placed: PlannedElementMove = { ...move, newStartTime: insertion.startTime };
+	return {
+		moves: [...shifts, placed],
+		createTracks: [],
+		targetSelection: [{ trackId: placed.targetTrackId, elementId: placed.elementId }],
 	};
 }
 

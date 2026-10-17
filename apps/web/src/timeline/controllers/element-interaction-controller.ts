@@ -19,7 +19,10 @@ import {
 } from "@/wasm";
 import { TIMELINE_DRAG_THRESHOLD_PX } from "@/timeline/components/interaction";
 import type { FrameRate } from "opencut-wasm";
-import { computeDropTarget } from "@/timeline/components/drop-target";
+import {
+	computeDropTarget,
+	getTrackAtY,
+} from "@/timeline/components/drop-target";
 import { getMouseTimeFromClientX } from "@/timeline/drag-utils";
 import { generateUUID } from "@/utils/id";
 import type { SnapPoint } from "@/timeline/snapping";
@@ -50,6 +53,7 @@ export interface InputAdapter {
 export interface SceneReader {
 	getTracks: () => SceneTracks;
 	getActiveFps: () => FrameRate | null;
+	isMagneticMainTrack?: () => boolean;
 }
 
 export interface ElementSelectionApi {
@@ -192,7 +196,9 @@ function resolveDropTarget({
 	zoomLevel,
 	snappedTime,
 	verticalDragDirection,
+	insertOnMainTrack,
 }: {
+	insertOnMainTrack: boolean;
 	clientX: number;
 	clientY: number;
 	elementId: string;
@@ -219,10 +225,12 @@ function resolveDropTarget({
 	const headerHeight =
 		viewport.getHeaderEl()?.getBoundingClientRect().height ?? 0;
 
-	return computeDropTarget({
+	const mouseY =
+		clientY - scrollRect.top + scrollContainer.scrollTop - headerHeight;
+	const dropTarget = computeDropTarget({
 		elementType: movingElement.type,
 		mouseX: clientX - scrollRect.left + scrollContainer.scrollLeft,
-		mouseY: clientY - scrollRect.top + scrollContainer.scrollTop - headerHeight,
+		mouseY,
 		tracks,
 		playheadTime: snappedTime,
 		isExternalDrop: false,
@@ -233,6 +241,30 @@ function resolveDropTarget({
 		excludeElementId: movingElement.id,
 		verticalDragDirection,
 	});
+
+	// Over the main track with the magnetic track on: dropping on clips inserts
+	// between them instead of opening a new track.
+	if (
+		insertOnMainTrack &&
+		dropTarget.isNewTrack &&
+		(movingElement.type === "video" || movingElement.type === "image")
+	) {
+		const ordered = orderedTracks(tracks);
+		const hovered = getTrackAtY({
+			mouseY,
+			tracks: ordered,
+			verticalDragDirection,
+		});
+		if (hovered && ordered[hovered.trackIndex]?.id === tracks.main.id) {
+			return {
+				...dropTarget,
+				trackIndex: hovered.trackIndex,
+				isNewTrack: false,
+				insertPosition: null,
+			};
+		}
+	}
+	return dropTarget;
 }
 
 function resolveGroupMoveForDrop({
@@ -241,12 +273,14 @@ function resolveGroupMoveForDrop({
 	anchorStartTime,
 	dropTarget,
 	reservedNewTrackIds,
+	insertOnMainTrack,
 }: {
 	group: MoveGroup;
 	tracks: SceneTracks;
 	anchorStartTime: MediaTime;
 	dropTarget: DropTarget;
 	reservedNewTrackIds: readonly string[];
+	insertOnMainTrack: boolean;
 }): GroupMoveResult | null {
 	const newTracksFallback = () =>
 		resolveGroupMove({
@@ -271,6 +305,7 @@ function resolveGroupMoveForDrop({
 			tracks,
 			anchorStartTime,
 			target: { kind: "existingTrack", anchorTargetTrackId: targetTrack.id },
+			insertOnMainTrack,
 		}) ?? newTracksFallback()
 	);
 }
@@ -497,6 +532,7 @@ export class ElementInteractionController {
 			zoomLevel,
 			snappedTime,
 			verticalDragDirection: verticalDirection(mousedown.origin.y, clientY),
+			insertOnMainTrack: scene.isMagneticMainTrack?.() ?? false,
 		});
 
 		const nextGroupMoveResult = anchorDropTarget
@@ -506,6 +542,7 @@ export class ElementInteractionController {
 					anchorStartTime: snappedTime,
 					dropTarget: anchorDropTarget,
 					reservedNewTrackIds: drag.reservedNewTrackIds,
+					insertOnMainTrack: scene.isMagneticMainTrack?.() ?? false,
 				})
 			: null;
 
