@@ -232,7 +232,7 @@ function EmojiPickerContent({
 			.filter((emoji): emoji is EmojiEntry => emoji !== undefined);
 	}, [groups, recentEmojis]);
 
-	const scrollToGroup = ({ groupKey }: { groupKey: number | "recent" }) => {
+	const scrollToGroup = ({ groupKey }: { groupKey: number }) => {
 		const target = scrollRef.current?.querySelector<HTMLElement>(
 			`[data-emoji-group="${groupKey}"]`,
 		);
@@ -251,18 +251,30 @@ function EmojiPickerContent({
 					onChange={(event) => setSearch(event.target.value)}
 				/>
 			</div>
+			<div className="border-b px-2 py-1">
+				<p className="text-muted-foreground pb-1 text-xs">Recientes</p>
+				{recentEntries.length > 0 ? (
+					<div className="grid grid-cols-8">
+						{recentEntries.slice(0, 16).map((emoji) => (
+							<button
+								key={emoji.unicode}
+								type="button"
+								title={emoji.label}
+								className="hover:bg-accent flex aspect-square items-center justify-center rounded text-2xl leading-none"
+								onClick={() => handleSelect({ emoji: emoji.unicode })}
+							>
+								{emoji.unicode}
+							</button>
+						))}
+					</div>
+				) : (
+					<p className="text-muted-foreground pb-1 text-xs">
+						Aún no hay emojis recientes
+					</p>
+				)}
+			</div>
 			{!query && groups && (
 				<div className="flex justify-between border-b px-1 py-1">
-					{recentEntries.length > 0 && (
-						<button
-							type="button"
-							title="Recientes"
-							className="hover:bg-accent rounded p-1 text-lg leading-none"
-							onClick={() => scrollToGroup({ groupKey: "recent" })}
-						>
-							🕘
-						</button>
-					)}
 					{groups.map((group) => (
 						<button
 							key={group.key}
@@ -287,14 +299,6 @@ function EmojiPickerContent({
 					<p className="text-muted-foreground p-2 text-sm">
 						No se ha encontrado ningún emoji
 					</p>
-				)}
-				{!searchResults && recentEntries.length > 0 && (
-					<div data-emoji-group="recent">
-						<p className="text-muted-foreground px-1 pb-1 pt-2 text-xs">
-							Recientes
-						</p>
-						<EmojiGrid emojis={recentEntries} onSelect={handleSelect} />
-					</div>
 				)}
 				{!searchResults &&
 					groups?.map((group) => (

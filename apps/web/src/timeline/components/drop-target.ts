@@ -100,7 +100,39 @@ function fallbackNewTrackDropTarget({
 	};
 }
 
-export function computeDropTarget({
+/**
+ * With the magnetic main track on, a video or image dragged over the main
+ * track goes onto it whatever the gap is: the drop inserts at the nearest cut
+ * and pushes the clips after it, instead of opening a new track.
+ */
+export function computeDropTarget(params: ComputeDropTargetParams): DropTarget {
+	const target = computeBaseDropTarget(params);
+	const { insertOnMainTrack, elementType, tracks, mouseY } = params;
+	if (!insertOnMainTrack) return target;
+	if (elementType !== "video" && elementType !== "image") return target;
+
+	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const hovered = getTrackAtY({
+		mouseY,
+		tracks: orderedTracks,
+		verticalDragDirection: params.verticalDragDirection,
+	});
+	if (!hovered || orderedTracks[hovered.trackIndex]?.id !== tracks.main.id) {
+		return target;
+	}
+	if (!target.isNewTrack && target.trackIndex === hovered.trackIndex) {
+		return target;
+	}
+	return {
+		trackIndex: hovered.trackIndex,
+		isNewTrack: false,
+		insertPosition: null,
+		xPosition: target.xPosition,
+		targetElement: EMPTY_TARGET_ELEMENT,
+	};
+}
+
+function computeBaseDropTarget({
 	elementType,
 	mouseX,
 	mouseY,

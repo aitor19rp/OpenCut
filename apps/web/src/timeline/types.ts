@@ -335,6 +335,8 @@ export interface ComputeDropTargetParams {
 	startTimeOverride?: MediaTime;
 	excludeElementId?: string;
 	targetElementTypes?: string[];
+	/** Magnetic main track: hovering the main track always targets it. */
+	insertOnMainTrack?: boolean;
 }
 
 export interface ClipboardItem {

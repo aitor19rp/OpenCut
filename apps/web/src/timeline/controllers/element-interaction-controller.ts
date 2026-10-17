@@ -19,10 +19,7 @@ import {
 } from "@/wasm";
 import { TIMELINE_DRAG_THRESHOLD_PX } from "@/timeline/components/interaction";
 import type { FrameRate } from "opencut-wasm";
-import {
-	computeDropTarget,
-	getTrackAtY,
-} from "@/timeline/components/drop-target";
+import { computeDropTarget } from "@/timeline/components/drop-target";
 import { getMouseTimeFromClientX } from "@/timeline/drag-utils";
 import { generateUUID } from "@/utils/id";
 import type { SnapPoint } from "@/timeline/snapping";
@@ -227,7 +224,7 @@ function resolveDropTarget({
 
 	const mouseY =
 		clientY - scrollRect.top + scrollContainer.scrollTop - headerHeight;
-	const dropTarget = computeDropTarget({
+	return computeDropTarget({
 		elementType: movingElement.type,
 		mouseX: clientX - scrollRect.left + scrollContainer.scrollLeft,
 		mouseY,
@@ -240,31 +237,8 @@ function resolveDropTarget({
 		startTimeOverride: snappedTime,
 		excludeElementId: movingElement.id,
 		verticalDragDirection,
+		insertOnMainTrack,
 	});
-
-	// Over the main track with the magnetic track on: dropping on clips inserts
-	// between them instead of opening a new track.
-	if (
-		insertOnMainTrack &&
-		dropTarget.isNewTrack &&
-		(movingElement.type === "video" || movingElement.type === "image")
-	) {
-		const ordered = orderedTracks(tracks);
-		const hovered = getTrackAtY({
-			mouseY,
-			tracks: ordered,
-			verticalDragDirection,
-		});
-		if (hovered && ordered[hovered.trackIndex]?.id === tracks.main.id) {
-			return {
-				...dropTarget,
-				trackIndex: hovered.trackIndex,
-				isNewTrack: false,
-				insertPosition: null,
-			};
-		}
-	}
-	return dropTarget;
 }
 
 function resolveGroupMoveForDrop({

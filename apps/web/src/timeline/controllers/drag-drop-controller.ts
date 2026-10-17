@@ -229,6 +229,7 @@ export class DragDropController {
 			pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
 			zoomLevel: this.config.zoomLevel,
 			targetElementTypes,
+			insertOnMainTrack: useTimelineStore.getState().magneticMainTrackEnabled,
 		});
 
 		const fps = this.config.getActiveProjectFps();
