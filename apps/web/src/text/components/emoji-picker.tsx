@@ -28,6 +28,34 @@ interface EmojiGroup {
 /** Emojibase "component" group: skin tones and hair parts, not standalone emojis. */
 const COMPONENT_GROUP = 2;
 
+const RECENT_EMOJIS_KEY = "opencut-recent-emojis";
+const RECENT_EMOJIS_LIMIT = 24;
+
+function readRecentEmojis(): string[] {
+	try {
+		const raw = localStorage.getItem(RECENT_EMOJIS_KEY);
+		const parsed: unknown = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed)
+			? parsed.filter((item): item is string => typeof item === "string")
+			: [];
+	} catch {
+		return [];
+	}
+}
+
+function saveRecentEmoji({ emoji }: { emoji: string }): string[] {
+	const next = [emoji, ...readRecentEmojis().filter((item) => item !== emoji)].slice(
+		0,
+		RECENT_EMOJIS_LIMIT,
+	);
+	try {
+		localStorage.setItem(RECENT_EMOJIS_KEY, JSON.stringify(next));
+	} catch {
+		// Storage unavailable: recents just won't persist.
+	}
+	return next;
+}
+
 let emojiGroupsPromise: Promise<EmojiGroup[]> | null = null;
 
 function loadEmojiGroups(): Promise<EmojiGroup[]> {
@@ -160,7 +188,15 @@ function EmojiPickerContent({
 }) {
 	const [groups, setGroups] = useState<EmojiGroup[] | null>(null);
 	const [search, setSearch] = useState("");
+	const [recentEmojis, setRecentEmojis] = useState<string[]>(() =>
+		readRecentEmojis(),
+	);
 	const scrollRef = useRef<HTMLDivElement>(null);
+
+	const handleSelect = ({ emoji }: { emoji: string }) => {
+		setRecentEmojis(saveRecentEmoji({ emoji }));
+		onSelect({ emoji });
+	};
 
 	useEffect(() => {
 		let cancelled = false;
@@ -185,7 +221,18 @@ function EmojiPickerContent({
 			.map((result) => result.emoji);
 	}, [groups, query]);
 
-	const scrollToGroup = ({ groupKey }: { groupKey: number }) => {
+	// Recents the system can still draw, in most-recent-first order.
+	const recentEntries = useMemo(() => {
+		if (!groups) return [];
+		const byUnicode = new Map(
+			groups.flatMap((group) => group.emojis).map((emoji) => [emoji.unicode, emoji]),
+		);
+		return recentEmojis
+			.map((unicode) => byUnicode.get(unicode))
+			.filter((emoji): emoji is EmojiEntry => emoji !== undefined);
+	}, [groups, recentEmojis]);
+
+	const scrollToGroup = ({ groupKey }: { groupKey: number | "recent" }) => {
 		const target = scrollRef.current?.querySelector<HTMLElement>(
 			`[data-emoji-group="${groupKey}"]`,
 		);
@@ -206,6 +253,16 @@ function EmojiPickerContent({
 			</div>
 			{!query && groups && (
 				<div className="flex justify-between border-b px-1 py-1">
+					{recentEntries.length > 0 && (
+						<button
+							type="button"
+							title="Recientes"
+							className="hover:bg-accent rounded p-1 text-lg leading-none"
+							onClick={() => scrollToGroup({ groupKey: "recent" })}
+						>
+							🕘
+						</button>
+					)}
 					{groups.map((group) => (
 						<button
 							key={group.key}
@@ -224,12 +281,20 @@ function EmojiPickerContent({
 					<p className="text-muted-foreground p-2 text-sm">Cargando…</p>
 				)}
 				{searchResults && (
-					<EmojiGrid emojis={searchResults} onSelect={onSelect} />
+					<EmojiGrid emojis={searchResults} onSelect={handleSelect} />
 				)}
 				{searchResults?.length === 0 && (
 					<p className="text-muted-foreground p-2 text-sm">
 						No se ha encontrado ningún emoji
 					</p>
+				)}
+				{!searchResults && recentEntries.length > 0 && (
+					<div data-emoji-group="recent">
+						<p className="text-muted-foreground px-1 pb-1 pt-2 text-xs">
+							Recientes
+						</p>
+						<EmojiGrid emojis={recentEntries} onSelect={handleSelect} />
+					</div>
 				)}
 				{!searchResults &&
 					groups?.map((group) => (
@@ -237,7 +302,7 @@ function EmojiPickerContent({
 							<p className="text-muted-foreground px-1 pb-1 pt-2 text-xs first-letter:uppercase">
 								{group.label}
 							</p>
-							<EmojiGrid emojis={group.emojis} onSelect={onSelect} />
+							<EmojiGrid emojis={group.emojis} onSelect={handleSelect} />
 						</div>
 					))}
 			</div>

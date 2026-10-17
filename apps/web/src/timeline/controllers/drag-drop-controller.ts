@@ -14,7 +14,13 @@ import {
 	buildElementFromMedia,
 	buildEffectElement,
 } from "@/timeline/element-utils";
-import { AddTrackCommand, InsertElementCommand } from "@/commands/timeline";
+import {
+	AddTrackCommand,
+	InsertElementCommand,
+	UpdateElementsCommand,
+} from "@/commands/timeline";
+import { planMainTrackInsertion } from "@/timeline/magnetic-main-track";
+import { useTimelineStore } from "@/timeline/timeline-store";
 import { BatchCommand } from "@/commands";
 import type { Command } from "@/commands/base-command";
 import { computeDropTarget } from "@/timeline/components/drop-target";
@@ -24,6 +30,7 @@ import type {
 	DropTarget,
 	ElementType,
 	SceneTracks,
+	TimelineElement,
 	TimelineTrack,
 	CreateTimelineElement,
 } from "@/timeline";
@@ -339,9 +346,42 @@ export class DragDropController {
 			return;
 		}
 
-		const tracks = orderedTracks({ sceneTracks: this.config.getSceneTracks() });
+		const sceneTracks = this.config.getSceneTracks();
+		const tracks = orderedTracks({ sceneTracks });
 		const track = tracks[target.trackIndex];
 		if (!track) return;
+
+		// On the magnetic main track, dropping onto a clip inserts at the
+		// nearest cut (or the very start) and pushes the clips after it.
+		if (
+			track.id === sceneTracks.main.id &&
+			element.type !== "audio" &&
+			useTimelineStore.getState().magneticMainTrackEnabled
+		) {
+			const insertion = planMainTrackInsertion({
+				tracks: sceneTracks,
+				dropStartTime: element.startTime,
+				duration: element.duration,
+			});
+			if (insertion) {
+				this.config.executeCommand(
+					new BatchCommand([
+						new UpdateElementsCommand({
+							updates: insertion.updates.map((update) => ({
+								...update,
+								patch: update.patch as Partial<TimelineElement>,
+							})),
+						}),
+						new InsertElementCommand({
+							element: { ...element, startTime: insertion.startTime },
+							placement: { mode: "explicit", trackId: track.id },
+						}),
+					]),
+				);
+				return;
+			}
+		}
+
 		this.config.insertElement({
 			placement: { mode: "explicit", trackId: track.id },
 			element,
@@ -427,8 +467,16 @@ export class DragDropController {
 		dragData: Extract<TimelineDragData, { type: "media" }>;
 	}): void {
 		if (target.targetElement) {
-			// Replace media source — not yet implemented
-			return;
+			// "Replace media source" isn't implemented. On the magnetic main
+			// track, dropping a video or image onto a clip inserts it at the
+			// nearest cut instead (see insertAtTarget).
+			const isMainTrackClip =
+				target.targetElement.trackId === this.config.getSceneTracks().main.id;
+			const canInsert =
+				isMainTrackClip &&
+				dragData.mediaType !== "audio" &&
+				useTimelineStore.getState().magneticMainTrackEnabled;
+			if (!canInsert) return;
 		}
 
 		const mediaAsset = this.config

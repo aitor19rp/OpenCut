@@ -209,3 +209,84 @@ export function clampTextsToMainTrackEnd({
 	}));
 	return changed ? ({ ...tracks, overlay } as SceneTracks) : null;
 }
+
+export interface MainTrackInsertion {
+	/** Where the new clip starts: the cut nearest to where it was dropped. */
+	startTime: MediaTime;
+	/** Updates that open a gap of the new clip's length at that cut. */
+	updates: Array<{
+		trackId: string;
+		elementId: string;
+		patch: { startTime: MediaTime; duration?: MediaTime };
+	}>;
+}
+
+/**
+ * Plans dropping a clip onto the main track. If the drop lands on top of an
+ * existing clip it is inserted at the nearest cut instead (the start of the
+ * timeline counts as a cut), pushing the clips after it and the texts that
+ * follow them. Returns null when it doesn't overlap anything.
+ */
+export function planMainTrackInsertion({
+	tracks,
+	dropStartTime,
+	duration,
+}: {
+	tracks: SceneTracks;
+	dropStartTime: number;
+	duration: number;
+}): MainTrackInsertion | null {
+	const clips = [...tracks.main.elements].sort(
+		(a, b) => a.startTime - b.startTime,
+	);
+	const dropEnd = dropStartTime + duration;
+	const overlaps = clips.some(
+		(clip) => clip.startTime < dropEnd && clip.startTime + clip.duration > dropStartTime,
+	);
+	if (!overlaps) return null;
+
+	const cuts = new Set<number>([0]);
+	for (const clip of clips) {
+		cuts.add(clip.startTime);
+		cuts.add(clip.startTime + clip.duration);
+	}
+	let insertAt = 0;
+	let bestDistance = Number.POSITIVE_INFINITY;
+	for (const cut of cuts) {
+		const distance = Math.abs(cut - dropStartTime);
+		if (distance < bestDistance) {
+			bestDistance = distance;
+			insertAt = cut;
+		}
+	}
+
+	const shifted = clips.map((clip) =>
+		clip.startTime >= insertAt
+			? { ...clip, startTime: mediaTime({ ticks: clip.startTime + duration }) }
+			: clip,
+	);
+	const updates: MainTrackInsertion["updates"] = [...clips]
+		.filter((clip) => clip.startTime >= insertAt)
+		// Last first, so a shifted clip never lands on one that hasn't moved yet.
+		.sort((a, b) => b.startTime - a.startTime)
+		.map((clip) => ({
+			trackId: tracks.main.id,
+			elementId: clip.id,
+			patch: { startTime: mediaTime({ ticks: clip.startTime + duration }) },
+		}));
+
+	const textUpdates = getFollowingTextUpdates({
+		tracks,
+		mainBefore: clips,
+		mainAfter: shifted,
+	}).map(({ trackId, element, startTime, duration: textDuration }) => ({
+		trackId,
+		elementId: element.id,
+		patch: { startTime, duration: textDuration },
+	}));
+
+	return {
+		startTime: mediaTime({ ticks: insertAt }),
+		updates: [...updates, ...textUpdates],
+	};
+}
