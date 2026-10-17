@@ -44,6 +44,7 @@ export interface PlayheadConfig {
 	getActiveProjectFps: () => FrameRate | null;
 	isShiftHeld: () => boolean;
 	getIsPlaying: () => boolean;
+	pause: () => void;
 	getRulerEl: () => HTMLDivElement | null;
 	getRulerScrollEl: () => HTMLDivElement | null;
 	getTracksScrollEl: () => HTMLDivElement | null;
@@ -124,6 +125,11 @@ export class PlayheadController {
 		this.deactivate();
 	}
 
+	/** Grabbing the playhead or clicking the ruler while playing stops playback. */
+	private pauseIfPlaying(): void {
+		if (this.config.getIsPlaying()) this.config.pause();
+	}
+
 	// --- Public event handlers (bound, stable references) ---
 
 	onPlayheadMouseDown(event: ReactMouseEvent): void {
@@ -135,6 +141,7 @@ export class PlayheadController {
 			hasMoved: false,
 			currentTime: null,
 		};
+		this.pauseIfPlaying();
 		this.config.setScrubbing(true);
 		this.scrub({ event, isElementSnappingEnabled: true });
 		this.activate();
@@ -151,6 +158,7 @@ export class PlayheadController {
 			hasMoved: false,
 			currentTime: null,
 		};
+		this.pauseIfPlaying();
 		this.config.setScrubbing(true);
 		// No element-edge snapping on initial ruler click — avoids a jarring jump.
 		this.scrub({ event, isElementSnappingEnabled: false });

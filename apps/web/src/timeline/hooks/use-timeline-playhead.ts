@@ -36,6 +36,7 @@ export function useTimelinePlayhead({
 		getActiveProjectFps: () => editor.project.getActive()?.settings.fps ?? null,
 		isShiftHeld: () => isShiftHeldRef.current,
 		getIsPlaying: () => editor.playback.getIsPlaying(),
+		pause: () => editor.playback.pause(),
 		getRulerEl: () => rulerRef.current,
 		getRulerScrollEl: () => rulerScrollRef.current,
 		getTracksScrollEl: () => tracksScrollRef.current,
