@@ -1,7 +1,7 @@
 // Builds the web app and lays out the Next.js standalone server so the
 // desktop shell (apps/electron) can run it. Run from the repo root:
 //   node scripts/prepare-desktop.mjs
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,13 +36,48 @@ for (const envFile of [".env.local", ".env.production", ".env"]) {
 	}
 }
 // electron-builder drops a top-level node_modules when copying resources, so
-// keep a copy under another name; the desktop shell points NODE_PATH at it.
+// build a flat, symlink-free copy under another name; the desktop shell points
+// NODE_PATH at it. Symlinks need admin rights on Windows (EPERM), so everything
+// is copied as real files. A package's own dependencies (e.g. next's
+// styled-jsx) sit next to it in bun's store, so each package's siblings are
+// hoisted too.
 const standaloneRoot = path.join(web, ".next", "standalone");
-rmSync(path.join(standaloneRoot, "modules_root"), { recursive: true, force: true });
-// dereference: bun's node_modules is full of symlinks, and creating symlinks
-// on Windows needs admin rights (EPERM), so copy the real files instead.
-cpSync(path.join(standaloneRoot, "node_modules"), path.join(standaloneRoot, "modules_root"), {
-	recursive: true,
-	dereference: true,
-});
+const modulesRoot = path.join(standaloneRoot, "modules_root");
+rmSync(modulesRoot, { recursive: true, force: true });
+mkdirSync(modulesRoot, { recursive: true });
+
+function copyPackage({ source, name }) {
+	const target = path.join(modulesRoot, name);
+	if (existsSync(target)) return;
+	mkdirSync(path.dirname(target), { recursive: true });
+	cpSync(source, target, { recursive: true, dereference: true });
+}
+
+function hoistFolder({ folder }) {
+	for (const entry of readdirSync(folder)) {
+		if (entry === ".bin" || entry === ".bun") continue;
+		const entryPath = path.join(folder, entry);
+		if (entry.startsWith("@")) {
+			for (const scoped of readdirSync(entryPath)) {
+				copyPackage({ source: path.join(entryPath, scoped), name: `${entry}/${scoped}` });
+			}
+		} else {
+			copyPackage({ source: entryPath, name: entry });
+		}
+	}
+}
+
+const visited = new Set();
+for (const entry of readdirSync(path.join(standaloneRoot, "node_modules"))) {
+	if (entry === ".bun" || entry === ".bin") continue;
+	const entryPath = path.join(standaloneRoot, "node_modules", entry);
+	const real = realpathSync(entryPath);
+	// .../node_modules/<name> or .../node_modules/@scope/<name>
+	const storeFolder = path.basename(path.dirname(real)).startsWith("@")
+		? path.dirname(path.dirname(real))
+		: path.dirname(real);
+	if (visited.has(storeFolder)) continue;
+	visited.add(storeFolder);
+	hoistFolder({ folder: storeFolder });
+}
 console.log("Listo: servidor preparado en", standaloneWeb);
