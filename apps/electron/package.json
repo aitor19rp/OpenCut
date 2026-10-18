@@ -26,7 +26,11 @@
     "extraResources": [
       {
         "from": "../web/.next/standalone",
-        "to": "server"
+        "to": "server",
+        "filter": [
+          "**/*",
+          "node_modules/**/*"
+        ]
       }
     ],
     "win": {

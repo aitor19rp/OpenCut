@@ -35,4 +35,11 @@ for (const envFile of [".env.local", ".env.production", ".env"]) {
 		cpSync(path.join(web, envFile), path.join(standaloneWeb, envFile));
 	}
 }
+// electron-builder drops a top-level node_modules when copying resources, so
+// keep a copy under another name; the desktop shell points NODE_PATH at it.
+const standaloneRoot = path.join(web, ".next", "standalone");
+rmSync(path.join(standaloneRoot, "modules_root"), { recursive: true, force: true });
+cpSync(path.join(standaloneRoot, "node_modules"), path.join(standaloneRoot, "modules_root"), {
+	recursive: true,
+});
 console.log("Listo: servidor preparado en", standaloneWeb);

@@ -14,6 +14,7 @@ const HOST = "127.0.0.1";
 const START_URL = `http://${HOST}:${PORT}/projects`;
 
 let serverProcess = null;
+let serverLogPath = null;
 let mainWindow = null;
 
 function getServerEntry() {
@@ -51,19 +52,32 @@ function waitForServer({ timeoutMs }) {
 }
 
 function startServer({ entry }) {
+	serverLogPath = path.join(app.getPath("userData"), "servidor.log");
+	fs.mkdirSync(path.dirname(serverLogPath), { recursive: true });
+	const logFd = fs.openSync(serverLogPath, "w");
+	fs.writeSync(logFd, `entry=${entry}\nexec=${process.execPath}\n`);
+	const rootModules = path.join(entry, "..", "..", "..", "modules_root");
+	const nodePath = fs.existsSync(rootModules)
+		? [rootModules, process.env.NODE_PATH].filter(Boolean).join(path.delimiter)
+		: process.env.NODE_PATH;
 	serverProcess = spawn(process.execPath, [entry], {
 		cwd: path.dirname(entry),
 		env: {
 			...process.env,
 			ELECTRON_RUN_AS_NODE: "1",
+			...(nodePath ? { NODE_PATH: nodePath } : {}),
 			NODE_ENV: "production",
 			PORT: String(PORT),
 			HOSTNAME: HOST,
 		},
-		stdio: "ignore",
+		stdio: ["ignore", logFd, logFd],
 		windowsHide: true,
 	});
-	serverProcess.on("exit", () => {
+	serverProcess.on("error", (error) => {
+		fs.writeSync(logFd, `spawn error: ${error.message}\n`);
+	});
+	serverProcess.on("exit", (code, signal) => {
+		fs.writeSync(logFd, `server exit code=${code} signal=${signal}\n`);
 		serverProcess = null;
 	});
 }
@@ -136,7 +150,14 @@ if (!hasLock) {
 		try {
 			await waitForServer({ timeoutMs: 60000 });
 		} catch (error) {
-			dialog.showErrorBox("OpenCut", String(error.message ?? error));
+			let details = "";
+			try {
+				details = fs.readFileSync(serverLogPath, "utf8").slice(-1500);
+			} catch {}
+			dialog.showErrorBox(
+				"OpenCut",
+				`${String(error.message ?? error)}\n\nRegistro (${serverLogPath}):\n${details}`,
+			);
 			stopServer();
 			app.quit();
 			return;
