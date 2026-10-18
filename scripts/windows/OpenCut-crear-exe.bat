@@ -1,17 +1,20 @@
 @echo off
 rem Crea el programa de escritorio de OpenCut (instalador .exe y version portable).
-rem Solo hace falta ejecutarlo la primera vez y cada vez que actualices el codigo.
+rem Solo usa bun (no hace falta Node). Guarda todo lo que pasa en crear-exe.log.
 cd /d "%~dp0..\.."
+set LOG=%cd%\crear-exe.log
+echo Registro en %LOG%
+echo === %date% %time% === > "%LOG%"
 
 echo [1/3] Instalando dependencias...
-call bun install || goto :error
+call bun install >> "%LOG%" 2>&1 || goto :error
 
-echo [2/3] Compilando la app web...
-call node scripts\prepare-desktop.mjs || goto :error
+echo [2/3] Compilando la app web (varios minutos)...
+call bun scripts\prepare-desktop.mjs >> "%LOG%" 2>&1 || goto :error
 
-echo [3/3] Creando el .exe (puede tardar varios minutos)...
+echo [3/3] Creando el .exe (varios minutos)...
 cd apps\electron
-call bun run dist || goto :error
+call bun --bun run dist >> "%LOG%" 2>&1 || goto :error
 
 echo.
 echo LISTO. Los archivos estan en: %cd%\dist
@@ -23,6 +26,9 @@ exit /b 0
 
 :error
 echo.
-echo ERROR: algo ha fallado, copia el mensaje de arriba y pasamelo.
+echo ERROR. Mira las ultimas lineas del registro:
+powershell -NoProfile -Command "Get-Content -Tail 25 '%LOG%'"
+echo.
+echo El registro completo esta en %LOG%
 pause
 exit /b 1
