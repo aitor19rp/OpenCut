@@ -20,7 +20,10 @@
     "preview:web": "turbo run preview --filter=@opencut/web",
     "publish:wasm": "bun run build:wasm && npm publish rust/wasm/pkg --access public",
     "start:tools": "turbo run start --filter=@opencut/tools",
-    "test": "bun test"
+    "test": "bun test",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "desktop:start": "bun run --cwd apps/electron start",
+    "desktop:dist": "node scripts/prepare-desktop.mjs && bun run --cwd apps/electron dist"
   },
   "dependencies": {
     "@biomejs/biome": "^2.4.8",

@@ -8,3 +8,11 @@ OpenCut-servidor-inicio.bat   Solo el servidor. Ponle un acceso directo en
 
 Crear iconos en el Escritorio: clic derecho sobre el .bat ->
 "Mostrar mas opciones" -> Enviar a -> Escritorio (crear acceso directo).
+
+=== PROGRAMA DE ESCRITORIO (sin navegador) ===
+OpenCut-crear-exe.bat    Crea el instalador .exe en apps\electron\dist
+                         (ejecutalo la primera vez y tras cada actualizacion).
+OpenCut-escritorio.bat   Abre OpenCut en su propia ventana sin crear el .exe.
+Importante: los proyectos se guardan en el almacenamiento de la propia app, no
+en Chrome. Lo que hiciste en el navegador NO aparece en la app de escritorio.
+Los proyectos de la app de escritorio se guardan en AppData\Roaming\OpenCut.

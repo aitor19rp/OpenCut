@@ -1,0 +1,45 @@
+{
+  "name": "@opencut/electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenCut como aplicacion de escritorio (ventana propia, sin navegador)",
+  "main": "main.js",
+  "author": "OpenCut",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.opencut.desktop",
+    "productName": "OpenCut",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/.next/standalone",
+        "to": "server"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
+  }
+}
