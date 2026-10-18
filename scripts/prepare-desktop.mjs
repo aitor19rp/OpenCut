@@ -39,7 +39,10 @@ for (const envFile of [".env.local", ".env.production", ".env"]) {
 // keep a copy under another name; the desktop shell points NODE_PATH at it.
 const standaloneRoot = path.join(web, ".next", "standalone");
 rmSync(path.join(standaloneRoot, "modules_root"), { recursive: true, force: true });
+// dereference: bun's node_modules is full of symlinks, and creating symlinks
+// on Windows needs admin rights (EPERM), so copy the real files instead.
 cpSync(path.join(standaloneRoot, "node_modules"), path.join(standaloneRoot, "modules_root"), {
 	recursive: true,
+	dereference: true,
 });
 console.log("Listo: servidor preparado en", standaloneWeb);
