@@ -290,3 +290,35 @@ export function planMainTrackInsertion({
 		updates: [...updates, ...textUpdates],
 	};
 }
+
+/**
+ * The main-track cut (start of the timeline or a clip boundary) closest to a
+ * time, ignoring the clip being dragged. Null when there is nothing to cut.
+ */
+export function getMainTrackCut({
+	tracks,
+	pointerTime,
+	excludeElementId,
+}: {
+	tracks: SceneTracks;
+	pointerTime: number;
+	excludeElementId?: string;
+}): MediaTime | null {
+	const clips = tracks.main.elements.filter(
+		(element) => element.id !== excludeElementId,
+	);
+	if (clips.length === 0) return null;
+
+	let best = 0;
+	let bestDistance = Math.abs(pointerTime);
+	for (const clip of clips) {
+		for (const cut of [clip.startTime, clip.startTime + clip.duration]) {
+			const distance = Math.abs(cut - pointerTime);
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				best = cut;
+			}
+		}
+	}
+	return mediaTime({ ticks: Math.round(best) });
+}

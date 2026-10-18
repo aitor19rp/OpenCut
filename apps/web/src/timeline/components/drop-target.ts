@@ -1,6 +1,7 @@
 import type { TimelineTrack, TimelineElement } from "@/timeline";
 import type { ComputeDropTargetParams, DropTarget } from "@/timeline";
 import { resolveTrackPlacement } from "@/timeline/placement";
+import { getMainTrackCut } from "@/timeline/magnetic-main-track";
 import { TIMELINE_TRACK_GAP_PX } from "./layout";
 import { getTrackHeight } from "./track-layout";
 import {
@@ -127,16 +128,22 @@ export function computeDropTarget(params: ComputeDropTargetParams): DropTarget {
 	) {
 		return target;
 	}
-	const hovered = { trackIndex: mainTrackIndex };
-	if (!target.isNewTrack && target.trackIndex === hovered.trackIndex) {
-		return target;
-	}
+
+	// The cut closest to the pointer, so the clip goes in where it's pointing.
+	const pointerTime = (params.mouseX / (params.pixelsPerSecond * params.zoomLevel)) * TICKS_PER_SECOND;
+	const cut = getMainTrackCut({
+		tracks,
+		pointerTime,
+		excludeElementId: params.excludeElementId,
+	});
+	if (cut === null) return target;
 	return {
-		trackIndex: hovered.trackIndex,
+		trackIndex: mainTrackIndex,
 		isNewTrack: false,
 		insertPosition: null,
-		xPosition: target.xPosition,
+		xPosition: cut,
 		targetElement: EMPTY_TARGET_ELEMENT,
+		insertionTime: cut,
 	};
 }
 

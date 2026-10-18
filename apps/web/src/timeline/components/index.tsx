@@ -30,6 +30,7 @@ import {
 	type ReactNode,
 } from "react";
 import type { MediaTime } from "@/wasm";
+import { TIMELINE_LAYERS } from "./layers";
 import type { ElementDragView, DropTarget } from "@/timeline";
 import { TimelineTrackContent } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
@@ -458,7 +459,11 @@ export function Timeline() {
 					<DragLine
 						dropTarget={dropTarget}
 						tracks={tracks}
-						isVisible={isDragOver && !dropTarget?.targetElement}
+						isVisible={
+							isDragOver &&
+							!dropTarget?.targetElement &&
+							dropTarget?.insertionTime === undefined
+						}
 						headerHeight={timelineHeaderHeight}
 					/>
 					<DragLine
@@ -557,6 +562,13 @@ export function Timeline() {
 										shouldIgnoreClick={shouldIgnoreClick}
 										isDragOver={isDragOver}
 										dropTarget={dropTarget}
+										insertionTime={
+											dragView.kind === "dragging"
+												? dragView.insertionTime
+												: isDragOver
+													? (dropTarget?.insertionTime ?? null)
+													: null
+										}
 									/>
 								)}
 							</div>
@@ -730,7 +742,9 @@ function TimelineTrackRows({
 	shouldIgnoreClick,
 	isDragOver,
 	dropTarget,
+	insertionTime,
 }: {
+	insertionTime: MediaTime | null;
 	mainTrackId: string | null;
 	zoomLevel: number;
 	dragView: ElementDragView;
@@ -831,6 +845,9 @@ function TimelineTrackRows({
 										: null
 								}
 							/>
+							{insertionTime !== null && track.id === mainTrackId && (
+								<InsertionMarker time={insertionTime} zoomLevel={zoomLevel} />
+							)}
 						</div>
 					</ContextMenuTrigger>
 					<ContextMenuContent className="w-40">
@@ -946,5 +963,22 @@ function PropertyTree({ rows }: { rows: ExpandedRow[] }) {
 				</div>
 			))}
 		</div>
+	);
+}
+
+/** Shows where a dragged clip will be inserted on the main track. */
+function InsertionMarker({
+	time,
+	zoomLevel,
+}: {
+	time: MediaTime;
+	zoomLevel: number;
+}) {
+	const left = timelineTimeToPixels({ time, zoomLevel });
+	return (
+		<div
+			className="bg-primary pointer-events-none absolute -top-3 -bottom-3 w-1.5 -translate-x-1/2 rounded-full border border-white shadow-[0_0_10px_3px_var(--primary)]"
+			style={{ left: `${left}px`, zIndex: TIMELINE_LAYERS.snapIndicator + 20 }}
+		/>
 	);
 }

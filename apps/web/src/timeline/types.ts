@@ -311,6 +311,8 @@ export type ElementDragView =
 			readonly currentMouseX: number;
 			readonly currentMouseY: number;
 			readonly dropTarget: DropTarget | null;
+			/** Main-track cut the dragged clip will be inserted at. */
+			readonly insertionTime: MediaTime | null;
 	  };
 
 export interface DropTarget {
@@ -319,6 +321,8 @@ export interface DropTarget {
 	insertPosition: "above" | "below" | null;
 	xPosition: MediaTime;
 	targetElement: { elementId: string; trackId: string } | null;
+	/** Set when the drop inserts at a main-track cut. */
+	insertionTime?: MediaTime;
 }
 
 export interface ComputeDropTargetParams {

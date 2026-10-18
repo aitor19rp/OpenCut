@@ -120,6 +120,7 @@ interface DragProgress {
 	currentMouseY: number;
 	groupMoveResult: GroupMoveResult | null;
 	dropTarget: DropTarget | null;
+	insertionTime: MediaTime | null;
 }
 
 type Session =
@@ -329,6 +330,7 @@ export class ElementInteractionController {
 			currentMouseX: drag.currentMouseX,
 			currentMouseY: drag.currentMouseY,
 			dropTarget: drag.dropTarget,
+			insertionTime: drag.insertionTime,
 		};
 	}
 
@@ -510,14 +512,17 @@ export class ElementInteractionController {
 			zoomLevel,
 			snappedTime,
 			verticalDragDirection: verticalDirection(mousedown.origin.y, clientY),
-			insertOnMainTrack: scene.isMagneticMainTrack?.() ?? false,
+			insertOnMainTrack:
+				(scene.isMagneticMainTrack?.() ?? false) &&
+				drag.moveGroup.members.length === 1,
 		});
 
+		const insertionTime = anchorDropTarget?.insertionTime ?? null;
 		const nextGroupMoveResult = anchorDropTarget
 			? resolveGroupMoveForDrop({
 					group: drag.moveGroup,
 					tracks,
-					anchorStartTime: snappedTime,
+					anchorStartTime: insertionTime ?? snappedTime,
 					dropTarget: anchorDropTarget,
 					reservedNewTrackIds: drag.reservedNewTrackIds,
 					insertOnMainTrack: scene.isMagneticMainTrack?.() ?? false,
@@ -525,6 +530,7 @@ export class ElementInteractionController {
 			: null;
 
 		drag.groupMoveResult = nextGroupMoveResult;
+		drag.insertionTime = nextGroupMoveResult ? insertionTime : null;
 		drag.dropTarget =
 			anchorDropTarget && (anchorDropTarget.isNewTrack || !nextGroupMoveResult)
 				? { ...anchorDropTarget, isNewTrack: true }
@@ -621,6 +627,7 @@ export class ElementInteractionController {
 			currentMouseY: clientY,
 			groupMoveResult: null,
 			dropTarget: null,
+			insertionTime: null,
 		};
 
 		this.session = { kind: "dragging", mousedown, drag };
