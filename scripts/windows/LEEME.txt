@@ -16,3 +16,10 @@ OpenCut-escritorio.bat   Abre OpenCut en su propia ventana sin crear el .exe.
 Importante: los proyectos se guardan en el almacenamiento de la propia app, no
 en Chrome. Lo que hiciste en el navegador NO aparece en la app de escritorio.
 Los proyectos de la app de escritorio se guardan en AppData\Roaming\OpenCut.
+
+=== USO DIARIO SIN REINSTALAR (recomendado) ===
+OpenCut-escritorio.bat   Baja los cambios del codigo, compila solo si hay algo
+                         nuevo y abre OpenCut en su propia ventana. No hace
+                         falta desinstalar ni instalar nada. Puedes crear un
+                         acceso directo a este archivo en el escritorio o
+                         anclarlo a la barra de tareas.
