@@ -29,6 +29,7 @@ import { DEFAULTS } from "@/timeline/defaults";
 import { getElementFontFamilies } from "@/timeline/element-utils";
 import { getRaisedProjectFpsForImportedMedia } from "@/fps/utils";
 import type { MediaAsset } from "@/media/types";
+import type { ProjectTemplate } from "@/project/templates";
 
 export interface MigrationState {
 	isMigrating: boolean;
@@ -118,6 +119,54 @@ export class ProjectManager {
 			await storageService.saveProject({ project: newProject });
 			this.updateMetadata(newProject);
 
+			return newProject.metadata.id;
+		} catch (error) {
+			toast.error("Failed to save new project");
+			throw error;
+		}
+	}
+
+	/** Creates a project with the layout and settings stored in a template. */
+	async createProjectFromTemplate({
+		template,
+		name,
+	}: {
+		template: ProjectTemplate;
+		name: string;
+	}): Promise<string> {
+		const now = new Date();
+		const scenes = template.scenes.map((scene) => ({
+			...scene,
+			createdAt: now,
+			updatedAt: now,
+		}));
+		const mainScene = scenes.find((scene) => scene.isMain) ?? scenes[0];
+		const newProject: TProject = {
+			metadata: {
+				id: generateUUID(),
+				name,
+				duration: getProjectDurationFromScenes({ scenes }),
+				createdAt: now,
+				updatedAt: now,
+			},
+			scenes,
+			currentSceneId: mainScene.id,
+			settings: template.settings,
+			version: CURRENT_PROJECT_VERSION,
+		};
+
+		this.active = newProject;
+		this.notify();
+
+		this.editor.media.clearAllAssets();
+		this.editor.scenes.initializeScenes({
+			scenes: newProject.scenes,
+			currentSceneId: newProject.currentSceneId,
+		});
+
+		try {
+			await storageService.saveProject({ project: newProject });
+			this.updateMetadata(newProject);
 			return newProject.metadata.id;
 		} catch (error) {
 			toast.error("Failed to save new project");

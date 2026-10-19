@@ -10,6 +10,11 @@ import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/project/components/migration-dialog";
 import { StoragePersistenceDialog } from "@/services/storage/components/storage-persistence-dialog";
 import { Button } from "@/components/ui/button";
+import {
+	deleteTemplate,
+	listTemplates,
+	type ProjectTemplate,
+} from "@/project/templates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -184,6 +189,7 @@ function ProjectsHeader() {
 
 				<div className="flex items-center gap-3 md:gap-4">
 					<SearchBar className="hidden md:block" />
+					<TemplatesButton />
 					<NewProjectButton />
 				</div>
 			</div>
@@ -499,6 +505,70 @@ function SortDropdown({ children }: { children: React.ReactNode }) {
 				>
 					Duration
 				</DropdownMenuCheckboxItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function TemplatesButton() {
+	const editor = useEditor();
+	const router = useRouter();
+	const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+
+	const createFromTemplate = async ({
+		template,
+	}: {
+		template: ProjectTemplate;
+	}) => {
+		try {
+			const projectId = await editor.project.createProjectFromTemplate({
+				template,
+				name: template.name,
+			});
+			router.push(`/editor/${projectId}`);
+		} catch (error) {
+			toast.error("Failed to create project", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
+		}
+	};
+
+	return (
+		<DropdownMenu onOpenChange={(open) => open && setTemplates(listTemplates())}>
+			<DropdownMenuTrigger asChild>
+				<Button size="lg" variant="outline" className="px-4">
+					Plantillas
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-64">
+				{templates.length === 0 && (
+					<p className="text-muted-foreground px-2 py-1.5 text-sm">
+						Aún no tienes plantillas. Guarda una desde el menú del proyecto.
+					</p>
+				)}
+				{templates.map((template) => (
+					<DropdownMenuItem
+						key={template.id}
+						onClick={() => createFromTemplate({ template })}
+						className="flex justify-between gap-2"
+					>
+						<span className="truncate">{template.name}</span>
+						<button
+							type="button"
+							title="Borrar plantilla"
+							className="text-muted-foreground hover:text-destructive text-xs"
+							onClick={(event) => {
+								event.stopPropagation();
+								event.preventDefault();
+								deleteTemplate({ id: template.id });
+								setTemplates(listTemplates());
+							}}
+						>
+							Borrar
+						</button>
+					</DropdownMenuItem>
+				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

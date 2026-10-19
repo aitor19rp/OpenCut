@@ -21,7 +21,16 @@ import { DEFAULT_LOGO_URL } from "@/site/brand";
 import { SOCIAL_LINKS } from "@/site/social";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
-import { CommandIcon, Logout05Icon } from "@hugeicons/core-free-icons";
+import {
+	CommandIcon,
+	Logout05Icon,
+	Copy01Icon,
+} from "@hugeicons/core-free-icons";
+import {
+	buildTemplateFromProject,
+	saveTemplate,
+} from "@/project/templates";
+import { SaveTemplateDialog } from "@/project/components/save-template-dialog";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
 import Image from "next/image";
@@ -45,7 +54,7 @@ export function EditorHeader() {
 
 function ProjectDropdown() {
 	const [openDialog, setOpenDialog] = useState<
-		"delete" | "rename" | "shortcuts" | null
+		"delete" | "rename" | "shortcuts" | "template" | null
 	>(null);
 	const [isExiting, setIsExiting] = useState(false);
 	const router = useRouter();
@@ -131,6 +140,13 @@ function ProjectDropdown() {
 					</DropdownMenuItem>
 
 					<DropdownMenuItem
+						onClick={() => setOpenDialog("template")}
+						icon={<HugeiconsIcon icon={Copy01Icon} />}
+					>
+						Guardar como plantilla
+					</DropdownMenuItem>
+
+					<DropdownMenuItem
 						onClick={() => setOpenDialog("shortcuts")}
 						icon={<HugeiconsIcon icon={CommandIcon} />}
 					>
@@ -161,6 +177,29 @@ function ProjectDropdown() {
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "delete" : null)}
 				onConfirm={handleDeleteProject}
 				projectNames={[activeProject?.metadata.name || ""]}
+			/>
+			<SaveTemplateDialog
+				isOpen={openDialog === "template"}
+				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "template" : null)}
+				defaultName={activeProject?.metadata.name || ""}
+				onConfirm={(name) => {
+					if (!activeProject) return;
+					try {
+						saveTemplate({
+							template: buildTemplateFromProject({
+								project: activeProject,
+								name,
+							}),
+						});
+						toast.success("Plantilla guardada", {
+							description:
+								"Los vídeos, imágenes y audios no se guardan: textos, estilos y ajustes sí.",
+						});
+					} catch {
+						toast.error("No se ha podido guardar la plantilla");
+					}
+					setOpenDialog(null);
+				}}
 			/>
 			<ShortcutsDialog
 				isOpen={openDialog === "shortcuts"}
