@@ -6,6 +6,8 @@ import { TranslateIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { distributeIntoLines, splitParagraphs } from "@/text/translate-layout";
+import { detectLanguage, type TranslationLanguage } from "@/text/detect-language";
+import { translateLocally } from "@/text/local-translator";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -33,28 +35,6 @@ interface TranslatorFactory {
 	}): Promise<BrowserTranslator>;
 }
 
-interface LanguageDetectionResult {
-	detectedLanguage: string;
-	confidence: number;
-}
-
-interface BrowserLanguageDetector {
-	detect(text: string): Promise<LanguageDetectionResult[]>;
-	destroy?(): void;
-}
-
-interface LanguageDetectorFactory {
-	create(): Promise<BrowserLanguageDetector>;
-}
-
-function getLanguageDetectorFactory(): LanguageDetectorFactory | null {
-	if (typeof window === "undefined") return null;
-	return (
-		(window as Window & { LanguageDetector?: LanguageDetectorFactory })
-			.LanguageDetector ?? null
-	);
-}
-
 function getTranslatorFactory(): TranslatorFactory | null {
 	if (typeof window === "undefined") return null;
 	return (
@@ -68,33 +48,7 @@ const LANGUAGES = [
 	{ code: "en", label: "Inglés (EE. UU.)" },
 ] as const;
 
-type LanguageCode = (typeof LANGUAGES)[number]["code"];
-
-/**
- * Detects which of our three languages the text is in. The detector scores
- * every language it knows, so we pick the best-scoring one among ours.
- */
-async function detectSourceLanguage({
-	text,
-}: {
-	text: string;
-}): Promise<LanguageCode | null> {
-	const factory = getLanguageDetectorFactory();
-	if (!factory) return null;
-	const detector = await factory.create();
-	try {
-		const results = await detector.detect(text);
-		const supported = new Set<string>(LANGUAGES.map((language) => language.code));
-		const best = results
-			.filter((result) => supported.has(result.detectedLanguage.split("-")[0]))
-			.sort((a, b) => b.confidence - a.confidence)[0];
-		return best
-			? (best.detectedLanguage.split("-")[0] as LanguageCode)
-			: null;
-	} finally {
-		detector.destroy?.();
-	}
-}
+type LanguageCode = TranslationLanguage;
 
 /** Language download on first use can be slow, but shouldn't hang forever. */
 const TRANSLATOR_SETUP_TIMEOUT_MS = 120_000;
@@ -124,6 +78,47 @@ function withTimeout<T>({
 	});
 }
 
+/**
+ * Prefers Chrome's built-in translator when it's ready to use right away;
+ * otherwise (other browsers, the desktop app) uses the offline models.
+ */
+async function createTextTranslator({
+	source,
+	target,
+}: {
+	source: LanguageCode;
+	target: LanguageCode;
+}): Promise<(text: string) => Promise<string>> {
+	const factory = getTranslatorFactory();
+	if (factory) {
+		try {
+			const options = { sourceLanguage: source, targetLanguage: target };
+			if ((await factory.availability(options)) === "available") {
+				const translator = await withTimeout({
+					promise: factory.create(options),
+					ms: TRANSLATOR_SETUP_TIMEOUT_MS,
+				});
+				return (text) => translator.translate(text);
+			}
+		} catch {
+			// Fall back to the offline models below.
+		}
+	}
+
+	let isFirstUse = true;
+	return (text) =>
+		translateLocally({
+			text,
+			source,
+			target,
+			onProgress: () => {
+				if (!isFirstUse) return;
+				isFirstUse = false;
+				toast.info("Descargando el modelo de traducción (solo la primera vez)…");
+			},
+		});
+}
+
 export function TranslateButton({
 	text,
 	onTranslated,
@@ -134,18 +129,11 @@ export function TranslateButton({
 	const [isTranslating, setIsTranslating] = useState(false);
 
 	const translate = async ({ target }: { target: LanguageCode }) => {
-		const factory = getTranslatorFactory();
-		if (!factory || !getLanguageDetectorFactory()) {
-			toast.error("El traductor no está disponible en este navegador", {
-				description: "Usa una versión reciente de Google Chrome en el ordenador.",
-			});
-			return;
-		}
 		if (!text.trim()) return;
 
 		setIsTranslating(true);
 		try {
-			const source = await detectSourceLanguage({ text });
+			const source = detectLanguage({ text });
 			if (!source) {
 				toast.error("No he podido reconocer el idioma del texto", {
 					description: "Solo se reconocen español, alemán e inglés.",
@@ -157,43 +145,28 @@ export function TranslateButton({
 				return;
 			}
 
-			const options = { sourceLanguage: source, targetLanguage: target };
-			const availability = await factory.availability(options);
-			if (availability === "unavailable") {
-				toast.error("Este par de idiomas no está disponible en tu Chrome");
-				return;
-			}
-			if (availability !== "available") {
-				toast.info("Descargando el idioma la primera vez…", {
-					description: "Puede tardar un poco.",
-				});
-			}
-			const translator = await withTimeout({
-				promise: factory.create(options),
-				ms: TRANSLATOR_SETUP_TIMEOUT_MS,
-			});
+			const translateText = await createTextTranslator({ source, target });
 			// Translate whole paragraphs, not single lines: a sentence broken
 			// over two lines needs its context, then restore the line layout.
 			const paragraphs = splitParagraphs({ text });
-			const translatedParagraphs = await Promise.all(
-				paragraphs.map(async (lines) => {
-					if (lines.length === 1 && !lines[0].trim()) return lines;
-					const joined = lines.map((line) => line.trim()).join(" ");
-					const translated = await translator.translate(joined);
-					return distributeIntoLines({
-						translated,
-						originalLines: lines,
-					});
-				}),
-			);
-			const lines = translatedParagraphs.flat();
-			translator.destroy?.();
-			onTranslated({ text: lines.join("\n") });
+			const translatedParagraphs: string[][] = [];
+			for (const lines of paragraphs) {
+				if (lines.length === 1 && !lines[0].trim()) {
+					translatedParagraphs.push(lines);
+					continue;
+				}
+				const joined = lines.map((line) => line.trim()).join(" ");
+				const translated = await translateText(joined);
+				translatedParagraphs.push(
+					distributeIntoLines({ translated, originalLines: lines }),
+				);
+			}
+			onTranslated({ text: translatedParagraphs.flat().join("\n") });
 		} catch (error) {
 			console.error("Translation failed", error);
 			toast.error("No se ha podido traducir el texto", {
 				description:
-					"Si es la primera vez, puede que no se haya podido descargar el idioma. Comprueba tu conexión e inténtalo de nuevo.",
+					"Si es la primera vez con este par de idiomas, necesita internet para descargar el modelo (una sola vez).",
 			});
 		} finally {
 			setIsTranslating(false);
