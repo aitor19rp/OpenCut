@@ -133,12 +133,14 @@ export function TranslateButton({
 
 		setIsTranslating(true);
 		try {
-			const source = detectLanguage({ text });
-			if (!source) {
-				toast.error("No he podido reconocer el idioma del texto", {
-					description: "Solo se reconocen español, alemán e inglés.",
-				});
-				return;
+			const detected = detectLanguage({ text });
+			// Short or unusual texts can't be told apart reliably: guess English
+			// (or Spanish when translating to English) and say so.
+			const source: LanguageCode = detected ?? (target === "en" ? "es" : "en");
+			if (!detected) {
+				toast.info(
+					`No estaba seguro del idioma; he supuesto ${source === "en" ? "inglés" : "español"}`,
+				);
 			}
 			if (source === target) {
 				toast.info("El texto ya está en ese idioma");

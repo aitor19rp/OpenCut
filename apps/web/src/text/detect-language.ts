@@ -20,6 +20,7 @@ const STOPWORDS: Record<TranslationLanguage, string[]> = {
 		"with", "this", "not", "be", "have", "do", "if", "your", "we", "they",
 		"what", "how", "when", "but", "on", "at", "my", "me", "can", "will", "want",
 		"hello", "thanks", "please", "comment", "just", "like", "so", "get", "all",
+		"text", "default", "title", "name", "new", "free", "now", "best", "love",
 		"from", "or", "an", "as", "was", "were", "has", "had",
 	],
 };
