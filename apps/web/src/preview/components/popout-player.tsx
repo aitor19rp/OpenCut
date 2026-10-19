@@ -66,22 +66,42 @@ export function usePreviewPopout({
 	const [popoutWindow, setPopoutWindow] = useState<Window | null>(null);
 
 	const openPopout = useCallback(async () => {
+		const aspectRatio = canvasHeight / canvasWidth || 9 / 16;
+		const width = POPOUT_DEFAULT_WIDTH;
+		const height =
+			Math.round(width * aspectRatio) +
+			POPOUT_TOOLBAR_HEIGHT +
+			POPOUT_TIMELINE_HEIGHT;
+
+		// Prefer the always-on-top Picture-in-Picture window (Chrome/Edge).
+		// Where it isn't available or fails (e.g. the desktop app), fall back
+		// to a plain popup window.
+		let pipWindow: Window | null = null;
 		const documentPictureInPicture = getDocumentPictureInPicture();
-		if (!documentPictureInPicture) {
-			toast.error("Pop-out player is not supported in this browser", {
-				description: "Use a recent version of Chrome or Edge.",
+		if (documentPictureInPicture) {
+			try {
+				pipWindow = await documentPictureInPicture.requestWindow({
+					width,
+					height,
+				});
+			} catch (error) {
+				console.warn("Picture-in-Picture window failed, using popup", error);
+			}
+		}
+		if (!pipWindow) {
+			pipWindow = window.open(
+				"about:blank",
+				"opencut-player",
+				`popup=yes,width=${width},height=${height}`,
+			);
+		}
+		if (!pipWindow) {
+			toast.error("Could not open the pop-out player", {
+				description: "The browser blocked the new window.",
 			});
 			return;
 		}
 
-		const aspectRatio = canvasHeight / canvasWidth || 9 / 16;
-		const pipWindow = await documentPictureInPicture.requestWindow({
-			width: POPOUT_DEFAULT_WIDTH,
-			height:
-				Math.round(POPOUT_DEFAULT_WIDTH * aspectRatio) +
-				POPOUT_TOOLBAR_HEIGHT +
-				POPOUT_TIMELINE_HEIGHT,
-		});
 		pipWindow.document.title = "OpenCut Player";
 		copyDocumentStyles({ target: pipWindow.document });
 		pipWindow.addEventListener("pagehide", () => setPopoutWindow(null), {

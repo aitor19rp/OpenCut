@@ -102,7 +102,19 @@ function createWindow() {
 	});
 	Menu.setApplicationMenu(null);
 	mainWindow.loadURL(START_URL);
-	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+	mainWindow.webContents.setWindowOpenHandler(({ url, features }) => {
+		// The floating player opens an about:blank window and fills it itself.
+		if (url === "about:blank" || url === "") {
+			return {
+				action: "allow",
+				overrideBrowserWindowOptions: {
+					autoHideMenuBar: true,
+					alwaysOnTop: true,
+					title: "OpenCut Player",
+					backgroundColor: "#0b0b0b",
+				},
+			};
+		}
 		if (url.startsWith(`http://${HOST}:${PORT}`)) {
 			return {
 				action: "allow",
