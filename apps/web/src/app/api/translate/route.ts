@@ -21,27 +21,36 @@ export async function POST(request: NextRequest) {
 	}
 	const { text, target, apiKey } = parsed.data;
 
-	// Free-plan keys end in ":fx" and use a different host.
-	const host = apiKey.endsWith(":fx")
-		? "https://api-free.deepl.com"
-		: "https://api.deepl.com";
+	// Free-plan keys end in ":fx" and use a different host. If DeepL rejects
+	// the key on the guessed host, try the other one before giving up.
+	const hosts = apiKey.endsWith(":fx")
+		? ["https://api-free.deepl.com", "https://api.deepl.com"]
+		: ["https://api.deepl.com", "https://api-free.deepl.com"];
 
-	let response: Response;
-	try {
-		response = await fetch(`${host}/v2/translate`, {
-			method: "POST",
-			headers: {
-				Authorization: `DeepL-Auth-Key ${apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				text: [text],
-				target_lang: DEEPL_TARGETS[target],
-				preserve_formatting: true,
-			}),
-			signal: AbortSignal.timeout(20_000),
-		});
-	} catch {
+	const requestInit: RequestInit = {
+		method: "POST",
+		headers: {
+			Authorization: `DeepL-Auth-Key ${apiKey}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			text: [text],
+			target_lang: DEEPL_TARGETS[target],
+			preserve_formatting: true,
+		}),
+		signal: AbortSignal.timeout(20_000),
+	};
+
+	let response: Response | null = null;
+	for (const host of hosts) {
+		try {
+			response = await fetch(`${host}/v2/translate`, requestInit);
+		} catch {
+			return NextResponse.json({ error: "network" }, { status: 502 });
+		}
+		if (response.status !== 403) break;
+	}
+	if (!response) {
 		return NextResponse.json({ error: "network" }, { status: 502 });
 	}
 
