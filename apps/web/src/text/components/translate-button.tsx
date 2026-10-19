@@ -9,9 +9,17 @@ import { distributeIntoLines, splitParagraphs } from "@/text/translate-layout";
 import { detectLanguage, type TranslationLanguage } from "@/text/detect-language";
 import { translateLocally } from "@/text/local-translator";
 import {
+	DeepLError,
+	describeDeepLError,
+	getDeepLApiKey,
+	translateWithDeepL,
+} from "@/text/deepl";
+import { DeepLSettingsDialog } from "./deepl-settings-dialog";
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -85,10 +93,42 @@ function withTimeout<T>({
 async function createTextTranslator({
 	source,
 	target,
+	apiKey,
 }: {
 	source: LanguageCode;
 	target: LanguageCode;
+	apiKey: string | null;
 }): Promise<(text: string) => Promise<string>> {
+	if (apiKey) {
+		// DeepL detects the source language itself. If it is unreachable the
+		// offline models take over.
+		let deeplFailed = false;
+		let fallback: ((text: string) => Promise<string>) | null = null;
+		return async (text) => {
+			if (!deeplFailed) {
+				try {
+					const result = await translateWithDeepL({ text, target, apiKey });
+					return result.detectedSourceLanguage.startsWith(target)
+						? text
+						: result.text;
+				} catch (error) {
+					if (error instanceof DeepLError) {
+						toast.error(describeDeepLError({ code: error.code }));
+						if (error.code !== "network") throw error;
+					}
+					deeplFailed = true;
+					toast.info("Uso el traductor integrado (sin DeepL)");
+				}
+			}
+			fallback ??= await createTextTranslator({
+				source: detectLanguage({ text }) ?? source,
+				target,
+				apiKey: null,
+			});
+			return fallback(text);
+		};
+	}
+
 	const factory = getTranslatorFactory();
 	if (factory) {
 		try {
@@ -127,27 +167,30 @@ export function TranslateButton({
 	onTranslated: ({ text }: { text: string }) => void;
 }) {
 	const [isTranslating, setIsTranslating] = useState(false);
+	const [isDeepLDialogOpen, setIsDeepLDialogOpen] = useState(false);
 
 	const translate = async ({ target }: { target: LanguageCode }) => {
 		if (!text.trim()) return;
 
 		setIsTranslating(true);
 		try {
-			const detected = detectLanguage({ text });
-			// Short or unusual texts can't be told apart reliably: guess English
-			// (or Spanish when translating to English) and say so.
+			const apiKey = getDeepLApiKey();
+			const detected = apiKey ? null : detectLanguage({ text });
+			// Without DeepL: short or unusual texts can't be told apart
+			// reliably, so guess English (or Spanish when translating to
+			// English) and say so.
 			const source: LanguageCode = detected ?? (target === "en" ? "es" : "en");
-			if (!detected) {
+			if (!apiKey && !detected) {
 				toast.info(
 					`No estaba seguro del idioma; he supuesto ${source === "en" ? "inglés" : "español"}`,
 				);
 			}
-			if (source === target) {
+			if (!apiKey && source === target) {
 				toast.info("El texto ya está en ese idioma");
 				return;
 			}
 
-			const translateText = await createTextTranslator({ source, target });
+			const translateText = await createTextTranslator({ source, target, apiKey });
 			// Translate whole paragraphs, not single lines: a sentence broken
 			// over two lines needs its context, then restore the line layout.
 			const paragraphs = splitParagraphs({ text });
@@ -166,6 +209,8 @@ export function TranslateButton({
 			onTranslated({ text: translatedParagraphs.flat().join("\n") });
 		} catch (error) {
 			console.error("Translation failed", error);
+			// DeepL errors were already explained to the user.
+			if (error instanceof DeepLError) return;
 			toast.error("No se ha podido traducir el texto", {
 				description:
 					"Si es la primera vez con este par de idiomas, necesita internet para descargar el modelo (una sola vez).",
@@ -176,28 +221,38 @@ export function TranslateButton({
 	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					variant="ghost"
-					size="icon"
-					title="Traducir"
-					disabled={isTranslating}
-					onClick={(event) => event.stopPropagation()}
-				>
-					<HugeiconsIcon icon={TranslateIcon} strokeWidth={1.5} />
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				{LANGUAGES.map((language) => (
-					<DropdownMenuItem
-						key={language.code}
-						onClick={() => translate({ target: language.code })}
+		<>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						title="Traducir"
+						disabled={isTranslating}
+						onClick={(event) => event.stopPropagation()}
 					>
-						Traducir a {language.label}
+						<HugeiconsIcon icon={TranslateIcon} strokeWidth={1.5} />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					{LANGUAGES.map((language) => (
+						<DropdownMenuItem
+							key={language.code}
+							onClick={() => translate({ target: language.code })}
+						>
+							Traducir a {language.label}
+						</DropdownMenuItem>
+					))}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => setIsDeepLDialogOpen(true)}>
+						Configurar DeepL…
 					</DropdownMenuItem>
-				))}
-			</DropdownMenuContent>
-		</DropdownMenu>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<DeepLSettingsDialog
+				open={isDeepLDialogOpen}
+				onOpenChange={setIsDeepLDialogOpen}
+			/>
+		</>
 	);
 }
